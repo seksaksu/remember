@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>บันทึกข้อมูลและตาราง</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        /* Style for disabled form elements (removed .submitted specific styles as multiple submissions are allowed) */
+        /* PRIMARY COLOR CHANGE: Pastel Green/Emerald */
+        .tab-button.active {
+            border-bottom: 3px solid #10b981; /* emerald-500 */
+            color: #059669; /* emerald-600 for stronger color */
+            font-weight: 600;
+        }
+        /* Custom styles for the table */
+        .data-table th, .data-table td {
+            padding: 10px 14px; /* Slightly larger padding for modern look */
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+            white-space: nowrap; 
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .data-table th {
+            background-color: #f0fdf4; /* light emerald-50 */
+            color: #374151; /* Dark gray for readability */
+            font-weight: 600;
+        }
+        .data-table td input {
+            border: 1px solid #ccc;
+            padding: 4px;
+            width: 100%;
+            box-sizing: border-box;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen flex items-start justify-center">
+
+    <div class="w-full max-w-4xl bg-white p-6 md:p-10 rounded-xl shadow-2xl">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">
+            บันทึกข้อมูลเล่น ๆ
+        </h1>
+        
+        <!-- Tab Navigation -->
+        <div class="flex border-b border-gray-200 mb-6">
+            <button id="tab1-button" class="tab-button active py-2 px-4 text-gray-500 hover:text-emerald-600 transition duration-150">
+                บันทึกข้อมูล
+            </button>
+            <button id="tab2-button" class="tab-button py-2 px-4 text-gray-500 hover:text-emerald-600 transition duration-150">
+                ตารางข้อมูล
+            </button>
+            <button id="tab3-button" class="tab-button py-2 px-4 text-gray-500 hover:text-emerald-600 transition duration-150">
+                แผนที่
+            </button>
+        </div>
+
+        <!-- Tab Content Container -->
+        <div id="tab-content">
+            
+            <!-- Tab 1: ฟอร์มบันทึกข้อมูล -->
+            <div id="tab1-content" class="tab-pane">
+                <p class="text-gray-500 mb-8 text-center">
+                    กรุณากรอกข้อมูลเพื่อบันทึกไปยัง Google Sheets ของคุณ
+                </p>
+
+                <form id="dataForm" class="space-y-6">
+                    
+                    <!-- Hidden fields -->
+                    <input type="hidden" id="timestamp" name="timestamp" value="">
+                    
+                    <!-- --- ข้อมูลทั่วไป (General Information Group) --- -->
+                    <fieldset class="border border-gray-200 p-4 rounded-xl shadow-sm space-y-4">
+                        <legend class="text-lg font-semibold text-gray-700 px-2">ข้อมูลทั่วไป</legend>
+                        
+                        <!-- Field 1: ชื่อ สกุล -->
+                        <div>
+                            <label for="full_name" class="block text-sm font-medium text-gray-700 mb-1">1. ชื่อ สกุล</label>
+                            <input type="text" id="full_name" name="full_name" required
+                                   class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 transition duration-150 ease-in-out"
+                                   placeholder="กรอกชื่อและนามสกุล">
+                        </div>
+            
+                        <!-- Field 2: แผนก (Dropdown) -->
+                        <div>
+                            <label for="department" class="block text-sm font-medium text-gray-700 mb-1">2. แผนก</label>
+                            <select id="department" name="department" required
+                                    class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 transition duration-150 ease-in-out bg-white">
+                                <option value="" disabled selected>--- เลือกแผนก ---</option>
+                                <option value="แผนก 1">แผนก 1</option>
+                                <option value="แผนก 2">แผนก 2</option>
+                                <option value="แผนก 3">แผนก 3</option>
+                                <option value="แผนก 4">แผนก 4</option>
+                                <option value="แผนก 5">แผนก 5</option>
+                                <option value="แผนก 6">แผนก 6</option>
+                                <option value="แผนก 7">แผนก 7</option>
+                                <option value="แผนก 8">แผนก 8</option>
+                                <option value="แผนก 9">แผนก 9</option>
+                            </select>
+                        </div>
+            
+                        <!-- Field 3: รหัสพนักงาน (type="number") -->
+                        <div>
+                            <label for="employee_id" class="block text-sm font-medium text-gray-700 mb-1">3. รหัสพนักงาน (ตัวเลขเท่านั้น)</label>
+                            <input type="number" id="employee_id" name="employee_id" required
+                                   class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 transition duration-150 ease-in-out"
+                                   placeholder="เช่น 123456">
+                        </div>
+                    </fieldset>
+
+                    <!-- --- ข้อมูลจำนวน/พื้นที่ (Number and Area Group) --- -->
+                    <fieldset class="border border-gray-200 p-4 rounded-xl shadow-sm space-y-4">
+                        <legend class="text-lg font-semibold text-gray-700 px-2">ข้อมูลจำนวน/พื้นที่ (รองรับ , และทศนิยม 2 ตำแหน่ง)</legend>
+
+                        <!-- Field 4: จำนวนแปลง -->
+                        <div>
+                            <label for="number_of_plots" class="block text-sm font-medium text-gray-700 mb-1">4. จำนวนแปลง</label>
+                            <input type="text" id="number_of_plots" name="number_of_plots" required
+                                   class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 transition duration-150 ease-in-out"
+                                   placeholder="กรอกจำนวนแปลง (เช่น 1,500.50)"
+                                   oninput="formatDecimalInput(this)">
+                        </div>
+
+                        <!-- Field 5: พื้นที่ไร่ -->
+                        <div>
+                            <label for="area_rai" class="block text-sm font-medium text-gray-700 mb-1">5. พื้นที่ไร่</label>
+                            <input type="text" id="area_rai" name="area_rai" required
+                                   class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 transition duration-150 ease-in-out"
+                                   placeholder="กรอกพื้นที่เป็นไร่ (เช่น 125.50)"
+                                   oninput="formatDecimalInput(this)">
+                        </div>
+                    </fieldset>
+
+                    <!-- --- ประเภทพืช (Crop Type Dropdown) --- -->
+                    <div>
+                        <label for="crop_type" class="block text-sm font-medium text-gray-700 mb-1">ประเภทพืช</label>
+                        <select id="crop_type" name="crop_type" required
+                                class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 transition duration-150 ease-in-out bg-white">
+                            <option value="" disabled selected>--- เลือกประเภทพืช ---</option>
+                            <option value="อ้อยGPS">อ้อยGPS</option>
+                            <option value="อ้อยGPSพืชอื่น">อ้อยGPSพืชอื่น</option>
+                            <option value="อ้อยทั่วไป">อ้อยทั่วไป</option>
+                            <option value="มันสำปะหลัง">มันสำปะหลัง</option>
+                            <option value="นาข้าว">นาข้าว</option>
+                            <option value="อื่นๆ">อื่นๆ</option>
+                        </select>
+                    </div>
+
+                    <!-- Submit and Clear Buttons for New Data -->
+                    <div class="pt-4 flex space-x-4">
+                        <button type="button" id="clearButton"
+                                class="w-1/3 flex justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-md text-lg font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition duration-150 ease-in-out">
+                            เคลียร์ข้อมูล
+                        </button>
+                        <button type="submit" id="submitButton"
+                                class="w-2/3 flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-xl text-lg font-medium text-white bg-emerald-500 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition duration-150 ease-in-out disabled:opacity-50">
+                            บันทึกข้อมูล
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Tab 2: ตารางข้อมูล -->
+            <div id="tab2-content" class="tab-pane hidden">
+                <div id="data_table_container" class="overflow-x-auto">
+                    <div id="loading_status" class="text-center text-gray-500 py-8">
+                        <svg class="animate-spin h-6 w-6 text-emerald-500 inline-block mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        กำลังโหลดข้อมูล...
+                    </div>
+                    <!-- Table will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Tab 3: แผนที่ -->
+            <div id="tab3-content" class="tab-pane hidden p-4">
+                <p class="text-lg font-semibold text-gray-700 mb-4 text-center">
+                    ตำแหน่งจุด GCP โรงงานน้ำตาลราชสีมา
+                </p>
+                <div class="flex justify-center w-full">
+                    <!-- Google Maps Iframe for Ratchasima Sugar Mill GCP points -->
+                    <iframe src="https://www.google.com/maps/d/embed?mid=1b5VN3RYU6VkgXqHDJ2mZdZOjkIZj4A-t&ehbc=2E312F&noprof=1" 
+                            class="w-full rounded-xl shadow-lg" 
+                            style="height: 500px; border: 0;" 
+                            frameborder="0" allowfullscreen="" aria-hidden="false" tabindex="0">
+                    </iframe>
+                </div>
+            </div>
+
+            <!-- Status Message Box (Shared) -->
+            <div id="statusMessage" class="mt-6 p-4 rounded-lg text-center hidden" role="alert">
+                <!-- Messages will be displayed here -->
+            </div>
+            
+        </div>
+
+    </div>
+
+    <script>
+        // Global state and constants
+        // Removed: let isSubmitted = false; (Now allows multiple submissions)
+        let isEditing = null; // State for Table Editing (Tab 2) - stores rowIndex being edited
+        // Set the SCRIPT_URL to the latest deployed URL
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzsPfa9-vFyVSyzA5kGeL_lGAQN4mfSYonO9kTZQCQkV5jSjws58ubi9vNL_mbvJ6Xn/exec';
+
+        // Helper Functions for Number Formatting
+        function formatDecimalInput(input) {
+            let value = input.value;
+            value = value.replace(/[^\d.,]/g, '');
+            const parts = value.split('.');
+            if (parts.length > 2) {
+                value = parts[0] + '.' + parts.slice(1).join('');
+            }
+            if (value.includes('.')) {
+                const [integer, decimal] = value.split('.');
+                if (decimal.length > 2) {
+                    value = integer + '.' + decimal.substring(0, 2);
+                }
+            }
+            let cleanValue = value.replace(/,/g, '');
+            let integerPart = cleanValue.split('.')[0];
+            const decimalPart = cleanValue.split('.')[1] ? '.' + cleanValue.split('.')[1] : '';
+            integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            input.value = integerPart + decimalPart;
+        }
+
+        function cleanupValue(value) {
+            if (typeof value !== 'string') return value;
+            return value.replace(/,/g, '').trim();
+        }
+        
+        // Helper Functions for UI Status
+        function showStatus(message, type) {
+            const statusMessage = document.getElementById('statusMessage');
+            statusMessage.textContent = message;
+            statusMessage.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-blue-100', 'text-blue-800');
+
+            if (type === 'success') {
+                // Keep green for success, but ensure it's distinct
+                statusMessage.classList.add('bg-green-100', 'text-green-800');
+            } else if (type === 'error') {
+                statusMessage.classList.add('bg-red-100', 'text-red-800');
+            } else if (type === 'loading') {
+                // Use a subtle blue for loading status
+                statusMessage.classList.add('bg-blue-100', 'text-blue-800');
+            }
+        }
+
+        // Helper function for API calls with retry
+        async function fetchWithRetry(url, options, retries = 3) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    return response;
+                } catch (error) {
+                    if (i < retries - 1) {
+                        const delay = Math.pow(2, i) * 1000;
+                        console.warn(`Attempt ${i + 1} failed. Retrying in ${delay / 1000}s...`, error);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    } else {
+                        throw error;
+                    }
+                }
+            }
+        }
+
+        // --- Data Table Functions (Tab 2) ---
+
+        /** Renders the fetched data into the HTML table. */
+        function renderDataTable(data, headers) {
+            const container = document.getElementById('data_table_container');
+            const loadingStatus = document.getElementById('loading_status');
+
+            // FIX: Add null check before accessing classList
+            if (loadingStatus) { 
+                loadingStatus.classList.add('hidden');
+            }
+
+            if (data.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-8">ยังไม่มีข้อมูลบันทึกไว้ใน Google Sheet.</p>';
+                return;
+            }
+
+            // FILTER: Remove 'Timestamp' from the headers displayed in the table
+            const displayHeaders = headers.filter(h => h !== 'Timestamp'); 
+
+            // Create table structure
+            let tableHTML = `
+                <table class="data-table min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            ${displayHeaders.map(h => `<th class="px-3 py-3 text-xs uppercase tracking-wider">${h}</th>`).join('')}
+                            <th class="px-3 py-3 text-xs uppercase tracking-wider">การดำเนินการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            data.forEach((row, index) => {
+                const rowId = `row-${row.rowIndex}`;
+                tableHTML += `<tr id="${rowId}" data-row-index="${row.rowIndex}">`;
+                
+                // Render cells - iterate over displayHeaders
+                displayHeaders.forEach(header => {
+                    // Use a more readable value if the value is a number (e.g., re-add commas)
+                    let cellValue = row[header] || '';
+                    if (header === 'จำนวนแปลง' || header === 'พื้นที่ไร่') {
+                         cellValue = formatNumberForDisplay(cellValue);
+                    }
+                    
+                    tableHTML += `<td data-header="${header}" class="whitespace-nowrap">${cellValue}</td>`;
+                });
+                
+                // Action Buttons - Updated color to emerald
+                tableHTML += `
+                    <td class="flex space-x-2 whitespace-nowrap">
+                        <button class="edit-btn text-emerald-600 hover:text-emerald-800 font-medium p-1 rounded transition duration-150">แก้ไข</button>
+                    </td>
+                </tr>`;
+            });
+
+            tableHTML += `</tbody></table>`;
+            container.innerHTML = tableHTML;
+        }
+        
+        /** Converts raw number string to display format with commas and 2 decimals. */
+        function formatNumberForDisplay(value) {
+            // value might be a string (from Sheets) or a number
+            if (value === null || value === undefined || value === '') return '';
+            
+            // Try to convert to float (Apps Script sometimes returns numbers directly)
+            let num = parseFloat(String(value).replace(/,/g, ''));
+            if (isNaN(num)) return value; // return original if not a number
+            
+            // Use built-in toLocaleString for comma separation and max 2 decimals
+            return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        }
+
+
+        /** Fetches data from Apps Script via doGet. */
+        async function fetchDataAndRenderTable() {
+            const container = document.getElementById('data_table_container');
+            const loadingStatus = document.getElementById('loading_status');
+            
+            // FIX: Add null check before accessing classList
+            if (loadingStatus) {
+                loadingStatus.classList.remove('hidden');
+            }
+            container.querySelector('table')?.remove(); // Clear previous table
+
+            try {
+                const response = await fetchWithRetry(SCRIPT_URL, { method: 'GET' });
+                const text = await response.text();
+                
+                let dataResult;
+                try {
+                    dataResult = JSON.parse(text);
+                } catch(e) {
+                    throw new Error("Apps Script response format error: " + text);
+                }
+
+                if (dataResult.error) {
+                    throw new Error(dataResult.error);
+                }
+
+                renderDataTable(dataResult.data, dataResult.headers);
+                showStatus('✅ โหลดข้อมูลตารางสำเร็จ', 'success');
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                
+                // FIX: Add null check before accessing textContent
+                if (loadingStatus) { 
+                    loadingStatus.textContent = '❌ ไม่สามารถโหลดข้อมูลได้: ' + error.message;
+                }
+                
+                showStatus('❌ ไม่สามารถโหลดข้อมูลตารางได้: ' + error.message, 'error');
+            }
+        }
+        
+        /** Toggles a table row into editable mode. */
+        function startEdit(rowElement) {
+            if (isEditing) {
+                // If another row is being edited, cancel it first
+                cancelEdit(document.getElementById(`row-${isEditing}`));
+            }
+            
+            isEditing = rowElement.dataset.rowIndex;
+            rowElement.classList.add('bg-yellow-50');
+
+            const headersToEdit = ["ชื่อ สกุล", "แผนก", "รหัสพนักงาน", "จำนวนแปลง", "พื้นที่ไร่", "ประเภทพืช"];
+
+            rowElement.querySelectorAll('td').forEach(cell => {
+                const header = cell.dataset.header;
+                if (!header || !headersToEdit.includes(header)) return;
+
+                const currentValue = cell.textContent.trim();
+                cell.dataset.originalValue = currentValue; // Store original value
+                cell.innerHTML = ''; // Clear cell content
+
+                let inputElement;
+
+                if (header === 'แผนก') {
+                    // Create dropdown for Department
+                    inputElement = document.createElement('select');
+                    inputElement.name = header;
+                    for (let i = 1; i <= 9; i++) {
+                        const option = document.createElement('option');
+                        option.value = `แผนก ${i}`;
+                        option.textContent = `แผนก ${i}`;
+                        if (currentValue === `แผนก ${i}`) {
+                            option.selected = true;
+                        }
+                        inputElement.appendChild(option);
+                    }
+                } else if (header === 'ประเภทพืช') {
+                    // Create dropdown for Crop Type
+                    inputElement = document.createElement('select');
+                    inputElement.name = header;
+                    const options = ["อ้อยGPS", "อ้อยGPSพืชอื่น", "อ้อยทั่วไป", "มันสำปะหลัง", "นาข้าว", "อื่นๆ"];
+                    options.forEach(opt => {
+                        const option = document.createElement('option');
+                        option.value = opt;
+                        option.textContent = opt;
+                        if (currentValue === opt) {
+                            option.selected = true;
+                        }
+                        inputElement.appendChild(option);
+                    });
+                } else if (header === 'รหัสพนักงาน') {
+                    // Input type number for Employee ID
+                    inputElement = document.createElement('input');
+                    inputElement.type = 'number';
+                    inputElement.value = currentValue;
+                    inputElement.required = true;
+                } else if (header === 'จำนวนแปลง' || header === 'พื้นที่ไร่') {
+                    // Input type text with formatting for plots/area
+                    inputElement = document.createElement('input');
+                    inputElement.type = 'text';
+                    inputElement.value = currentValue;
+                    inputElement.required = true;
+                    inputElement.setAttribute('oninput', 'formatDecimalInput(this)');
+                } else {
+                    // Default text input for Name
+                    inputElement = document.createElement('input');
+                    inputElement.type = 'text';
+                    inputElement.value = currentValue;
+                    inputElement.required = true;
+                }
+                
+                cell.appendChild(inputElement);
+            });
+
+            // Change buttons in the action column
+            const actionCell = rowElement.querySelector('td:last-child');
+            actionCell.innerHTML = `
+                <button class="save-btn text-green-600 hover:text-green-900 font-medium p-1 rounded transition duration-150">บันทึก</button>
+                <button class="cancel-btn text-red-600 hover:text-red-900 font-medium p-1 rounded transition duration-150">ยกเลิก</button>
+            `;
+        }
+
+        /** Saves the edited data back to Apps Script (UPDATE action). */
+        async function saveEdit(rowElement) {
+            const rowIndex = rowElement.dataset.rowIndex;
+            if (!rowIndex) return;
+
+            showStatus('กำลังบันทึกการแก้ไข...', 'loading');
+            
+            const submissionData = new URLSearchParams();
+            submissionData.append('rowIndex', rowIndex); // Critical for UPDATE action
+            submissionData.append('timestamp', new Date().toLocaleString("th-TH")); // Update timestamp
+
+            let isValid = true;
+            rowElement.querySelectorAll('td').forEach(cell => {
+                const header = cell.dataset.header;
+                const input = cell.querySelector('input, select');
+                
+                if (input) {
+                    let value = input.value;
+                    
+                    // Clean up number fields before submission
+                    if (header === 'จำนวนแปลง' || header === 'พื้นที่ไร่') {
+                        value = cleanupValue(value);
+                        if (isNaN(parseFloat(value)) || value === '') {
+                             isValid = false;
+                             // Use a custom message box instead of alert()
+                             console.error(`ค่า ${header} ต้องเป็นตัวเลขที่ถูกต้อง`);
+                             showStatus(`❌ ค่า ${header} ต้องเป็นตัวเลขที่ถูกต้อง`, 'error');
+                             return;
+                        }
+                    }
+                    
+                    // Use predefined key names based on form 'name' attributes
+                    let keyMap = {
+                        "ชื่อ สกุล": "full_name",
+                        "แผนก": "department",
+                        "รหัสพนักงาน": "employee_id",
+                        "จำนวนแปลง": "number_of_plots",
+                        "พื้นที่ไร่": "area_rai",
+                        "ประเภทพืช": "crop_type"
+                    };
+                    
+                    const fieldName = keyMap[header];
+                    if (fieldName) {
+                        submissionData.append(fieldName, value);
+                    }
+                }
+            });
+            
+            if (!isValid) {
+                 showStatus('❌ การแก้ไขไม่สมบูรณ์ กรุณาตรวจสอบข้อมูลตัวเลข', 'error');
+                 return;
+            }
+
+            try {
+                // Send the UPDATE request
+                await fetchWithRetry(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: submissionData.toString()
+                });
+
+                showStatus('✅ บันทึกการแก้ไขสำเร็จแล้ว! กำลังโหลดข้อมูลตารางใหม่', 'success');
+                isEditing = null;
+                // Reload data table after successful update
+                await fetchDataAndRenderTable(); 
+                
+            } catch (error) {
+                console.error('Error saving data:', error);
+                showStatus(`❌ เกิดข้อผิดพลาดในการบันทึกการแก้ไข: ${error.message}`, 'error');
+                // Re-enable editing or handle failure gracefully
+                // For simplicity, we just show the error, user must try again
+            }
+        }
+
+        /** Reverts a row back to display mode with original values. */
+        function cancelEdit(rowElement) {
+            rowElement.querySelectorAll('td').forEach(cell => {
+                const originalValue = cell.dataset.originalValue;
+                if (originalValue !== undefined) {
+                    cell.textContent = originalValue;
+                    delete cell.dataset.originalValue;
+                }
+            });
+
+            // Restore action buttons - Updated color to emerald
+            const actionCell = rowElement.querySelector('td:last-child');
+            actionCell.innerHTML = `
+                <button class="edit-btn text-emerald-600 hover:text-emerald-800 font-medium p-1 rounded transition duration-150">แก้ไข</button>
+            `;
+            rowElement.classList.remove('bg-yellow-50');
+            isEditing = null;
+            showStatus('ยกเลิกการแก้ไข', 'loading');
+        }
+
+
+        // --- Main Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('dataForm');
+            const submitButton = document.getElementById('submitButton'); // Get submit button
+            const clearButton = document.getElementById('clearButton'); // Get new clear button
+            
+            const tab1Content = document.getElementById('tab1-content');
+            const tab2Content = document.getElementById('tab2-content');
+            const tab3Content = document.getElementById('tab3-content');
+            const tab1Button = document.getElementById('tab1-button');
+            const tab2Button = document.getElementById('tab2-button');
+            const tab3Button = document.getElementById('tab3-button');
+            
+            // --- Tab Switching Logic ---
+            function switchTab(tabId) {
+                // Update buttons
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                document.getElementById(`${tabId}-button`).classList.add('active');
+                
+                // Update content visibility
+                tab1Content.classList.add('hidden');
+                tab2Content.classList.add('hidden');
+                tab3Content.classList.add('hidden');
+                document.getElementById(`${tabId}-content`).classList.remove('hidden');
+
+                if (tabId === 'tab2') {
+                    fetchDataAndRenderTable();
+                } else {
+                    showStatus('', 'none'); // Clear status when switching back to form
+                }
+                
+                // Cancel editing if switching away from the data table
+                if (tabId !== 'tab2' && isEditing) {
+                    cancelEdit(document.getElementById(`row-${isEditing}`));
+                }
+            }
+
+            tab1Button.addEventListener('click', () => switchTab('tab1'));
+            tab2Button.addEventListener('click', () => switchTab('tab2'));
+            tab3Button.addEventListener('click', () => switchTab('tab3'));
+
+            // --- Form Submission Logic (Tab 1) ---
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                submitButton.disabled = true;
+                showStatus('กำลังส่งข้อมูล... กรุณารอสักครู่', 'loading');
+
+                document.getElementById('timestamp').value = new Date().toLocaleString("th-TH");
+                
+                const rawFormData = new FormData(form);
+                const submissionData = new URLSearchParams();
+
+                for (const [key, value] of rawFormData.entries()) {
+                    if (key === 'number_of_plots' || key === 'area_rai') {
+                        submissionData.append(key, cleanupValue(value));
+                    } else {
+                        submissionData.append(key, value);
+                    }
+                }
+                
+                try {
+                    await fetchWithRetry(SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: submissionData.toString()
+                    });
+
+                    // Success - Reset form and re-enable button
+                    showStatus('✅ บันทึกข้อมูลสำเร็จ! ท่านสามารถบันทึกข้อมูลใหม่ได้ทันที', 'success');
+                    form.reset();
+                    submitButton.disabled = false;
+                    
+                } catch (error) {
+                    console.error('Error submitting data:', error);
+                    showStatus(`❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล: ${error.message}. กรุณาลองใหม่อีกครั้ง`, 'error');
+                    submitButton.disabled = false;
+                }
+            });
+            
+            // --- Clear Button Logic (New) ---
+            clearButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                form.reset();
+                showStatus('ฟอร์มถูกเคลียร์แล้ว', 'loading');
+                submitButton.disabled = false; // Ensure submit button is enabled if it was previously disabled by an error
+            });
+
+            // --- Table Action Listeners (Tab 2) ---
+            document.getElementById('data_table_container').addEventListener('click', (e) => {
+                const row = e.target.closest('tr[data-row-index]');
+                if (!row) return;
+
+                if (e.target.classList.contains('edit-btn')) {
+                    startEdit(row);
+                } else if (e.target.classList.contains('save-btn')) {
+                    saveEdit(row);
+                } else if (e.target.classList.contains('cancel-btn')) {
+                    cancelEdit(row);
+                }
+            });
+            
+            // Initialize: Load tab 1 content by default
+            switchTab('tab1');
+        });
+    </script>
+</body>
+</html>
