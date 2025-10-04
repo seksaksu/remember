@@ -3,1017 +3,1463 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>บันทึกข้อมูลและตาราง</title>
-    <!-- Load Tailwind CSS -->
+    <title>บันทึกรายรับ-รายจ่าย (Money Tracker)</title>
+    <!-- โหลด Tailwind CSS เพื่อความสวยงามและ Responsive -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Load Chart.js for graphing -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <!-- โหลด SweetAlert2 สำหรับแจ้งเตือน -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- โหลด Chart.js สำหรับสร้างกราฟ -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- โหลด Chart.js DataLabels Plugin สำหรับแสดงค่าบนแท่งกราฟ -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Noto+Sans+Thai:wght@100..900&display=swap');
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7f9fb;
+            font-family: 'Noto Sans Thai', 'Inter', sans-serif;
+            background-color: #f7fdee; /* Lightest emerald/mint green background */
         }
-        /* PRIMARY COLOR CHANGE: Pastel Green/Emerald */
-        .tab-button.active {
-            border-bottom: 3px solid #10b981; /* emerald-500 */
-            color: #059669; /* emerald-600 for stronger color */
-            font-weight: 600;
+        /* Custom scrollbar style for better aesthetics */
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
         }
-        /* Custom styles for the table */
-        .data-table th, .data-table td {
-            padding: 10px 14px;
-            text-align: left;
-            border-bottom: 1px solid #e5e7eb;
-            white-space: nowrap; 
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background-color: #4ade80; /* Light emerald for thumb */
+            border-radius: 3px;
         }
-        .data-table th {
-            background-color: #f0fdf4; /* light emerald-50 */
-            color: #374151;
-            font-weight: 600;
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #e6f7e9; /* Even lighter track */
         }
-        .data-table td input {
-            border: 1px solid #ccc;
-            padding: 4px;
-            width: 100%;
-            box-sizing: border-box;
-            border-radius: 4px;
+
+        /* Styling for the main content tabs */
+        .main-tab {
+            padding: 10px 20px;
+            border-radius: 12px 12px 0 0;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+        }
+        .main-tab:hover {
+            background-color: #d1fae5;
+        }
+        .active-main-tab {
+            background-color: #ecfdf5;
+            border-bottom: 2px solid #059669; /* Deep emerald underline */
+            color: #059669;
+            font-weight: 700;
         }
     </style>
 </head>
-<body class="p-4 md:p-8 min-h-screen flex items-start justify-center">
+<body class="min-h-screen flex flex-col">
 
-    <div class="w-full max-w-4xl bg-white p-6 md:p-10 rounded-xl shadow-2xl">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">
-            บันทึกข้อมูลเล่น ๆ
-        </h1>
+    <!-- Global State & Config -->
+    <script>
+        // กำหนด URL ของ Google App Script ที่ Deploy แล้ว - อัปเดตใหม่
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxKoilorOY7go2Te9SlD5xkcQpADaAuYqmCa3k4YF6fuYUVSE-iqg1dWeiwZCTB9y22lw/exec";
         
-        <!-- Tab Navigation (Updated indices: 1, 2, 3, 4) -->
-        <div class="flex border-b border-gray-200 mb-6">
-            <button id="tab1-button" class="tab-button active py-2 px-4 text-gray-500 hover:text-emerald-600 transition duration-150">
-                บันทึกข้อมูล
-            </button>
-            <button id="tab2-button" class="tab-button py-2 px-4 text-gray-500 hover:text-emerald-600 transition duration-150">
-                กราฟสรุป
-            </button>
-            <button id="tab3-button" class="tab-button py-2 px-4 text-gray-500 hover:text-emerald-600 transition duration-150">
-                ตารางข้อมูล
-            </button>
-            <button id="tab4-button" class="tab-button py-2 px-4 text-gray-500 hover:text-emerald-600 transition duration-150">
-                แผนที่
-            </button>
+        // ข้อมูลล็อกอินที่กำหนด
+        const USERS = [
+            { name: "sek", password: "154654" },
+            { name: "arm", password: "154654" }
+        ];
+
+        // หมวดหมู่รายรับ-รายจ่าย
+        const CATEGORIES = {
+            'รายรับ': [
+                'เงินเดือน (Salary)', 
+                'เงินจากแหล่งอื่นๆ (Other Sources)', 
+                'เงินปันผล/ดอกเบี้ย (Dividends/Interest)',
+                'การลงทุน (Investment Return)', 
+                'ขายของ (Sales)', 
+                'อื่นๆ (Others)', 
+                'หมายเหตุ (Notes)'
+            ],
+            'รายจ่าย': [
+                'ค่าอาหาร (Food)', 
+                'ค่าของใช้/ช้อปปิ้ง (Supplies/Shopping)', 
+                'ความบันเทิง (Entertainment)', 
+                'ค่าผ่อนรถ (Car Payment)', 
+                'ค่าน้ำมัน (Fuel)', 
+                'เกี่ยวกับลูก (Child Expenses)', 
+                'ค่าผ่อนบัตรฯ (Credit Card Payment)', 
+                'ค่าเดินทาง (Travel)',
+                'ค่าที่พัก/ผ่อนบ้าน (Housing/Rent)',
+                'ค่าสาธารณูปโภค (Utilities)',
+                'อื่นๆ (Others)', 
+                'หมายเหตุ (Notes)'
+            ]
+        };
+        
+        // ตัวแปรสถานะ
+        let isLoggedIn = false;
+        let records = []; // All records loaded from Sheet
+        let allCharts = {};
+        let currentPeriod = 'daily'; // สถานะช่วงเวลาปัจจุบันสำหรับ Summary View
+        let selectedMonthYear = ''; // สถานะเดือนที่ถูกเลือก ('YYYY-MM')
+        let selectedYear = new Date().getFullYear().toString(); // สถานะปีที่ถูกเลือก ('YYYY')
+        let currentView = 'summary'; // สถานะมุมมองปัจจุบัน: 'summary', 'dashboard' หรือ 'records'
+
+        // กำหนดสีสำหรับกราฟ
+        const CHART_COLORS = [
+            '#34d399', '#facc15', '#60a5fa', '#f472b6', '#3b82f6', 
+            '#ef4444', '#f97316', '#a855f7', '#14b8a6', '#6366f1'
+        ];
+        const PRIMARY_COLOR = '#059669'; // Emerald
+        const SECONDARY_COLOR = '#ef4444'; // Red
+
+    </script>
+
+    <!-- UI Implementation -->
+
+    <div id="login-screen" class="fixed inset-0 bg-emerald-50 flex items-center justify-center p-4 z-50 transition-opacity duration-500">
+        <div class="w-full max-w-sm bg-white p-8 rounded-xl shadow-2xl border border-emerald-200">
+            <div class="text-center mb-6">
+                <!-- Logo: International Currency -->
+                <div class="text-6xl mb-2">🌍💰</div>
+                <h1 class="text-3xl font-extrabold text-emerald-700">Money Tracker</h1>
+                <p class="text-gray-500 mt-1">ระบบรายรับ-รายจ่ายส่วนตัว</p>
+            </div>
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="username" class="block text-sm font-medium text-gray-700">ชื่อผู้ใช้ (Name)</label>
+                    <input type="text" id="username" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:border-emerald-500 focus:ring-emerald-500" required>
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-sm font-medium text-gray-700">รหัสผ่าน (Password)</label>
+                    <input type="password" id="password" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:border-emerald-500 focus:ring-emerald-500" required>
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg transition duration-150 ease-in-out shadow-lg shadow-emerald-200">
+                    เข้าสู่ระบบ
+                </button>
+            </form>
         </div>
+    </div>
 
-        <!-- Tab Content Container -->
-        <div id="tab-content">
-            
-            <!-- Tab 1: ฟอร์มบันทึกข้อมูล -->
-            <div id="tab1-content" class="tab-pane">
-                <p class="text-gray-500 mb-8 text-center">
-                    กรุณากรอกข้อมูลเพื่อบันทึกไปยัง Google Sheets ของคุณ
-                </p>
-
-                <form id="dataForm" class="space-y-6">
-                    
-                    <!-- Hidden fields -->
-                    <input type="hidden" id="timestamp" name="timestamp" value="">
-                    
-                    <!-- --- ข้อมูลทั่วไป (General Information Group) --- -->
-                    <fieldset class="border border-gray-200 p-4 rounded-xl shadow-sm space-y-4">
-                        <legend class="text-lg font-semibold text-gray-700 px-2">ข้อมูลทั่วไป</legend>
+    <div id="main-app" class="hidden flex-grow md:flex md:flex-row">
+        <!-- Sidebar / Main Form (Mobile Top / Desktop Left) -->
+        <div class="w-full md:w-1/3 p-4 md:p-6 lg:p-8 bg-emerald-50 border-r border-emerald-200">
+            <div class="sticky top-0 pb-4 md:pb-0">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center">
+                        <!-- ไอคอนใหม่: 📝 (Memo/Note) เพื่อสื่อถึงการบันทึกรายการ -->
+                        <div class="text-4xl mr-2">📝</div>
+                        <h2 class="text-2xl font-bold text-emerald-800">บันทึกใหม่</h2>
+                    </div>
+                    <button onclick="logout()" class="text-sm text-red-500 hover:text-red-700 font-medium transition duration-150">
+                        ออกจากระบบ (<span id="current-user"></span>)
+                    </button>
+                </div>
+                
+                <!-- Entry Form Card -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-emerald-100">
+                    <form id="record-form">
+                        <input type="hidden" id="record-id">
                         
-                        <!-- Field 1: ชื่อ สกุล -->
-                        <div>
-                            <label for="full_name" class="block text-sm font-medium text-gray-700 mb-1">1. ชื่อ สกุล</label>
-                            <input type="text" id="full_name" name="full_name" required
-                                   class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 transition duration-150 ease-in-out"
-                                   placeholder="กรอกชื่อและนามสกุล">
-                        </div>
-            
-                        <!-- Field 2: แผนก (Dropdown) -->
-                        <div>
-                            <label for="department" class="block text-sm font-medium text-gray-700 mb-1">2. แผนก</label>
-                            <select id="department" name="department" required
-                                    class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 transition duration-150 ease-in-out bg-white">
-                                <option value="" disabled selected>--- เลือกแผนก ---</option>
-                                <option value="แผนก 1">แผนก 1</option>
-                                <option value="แผนก 2">แผนก 2</option>
-                                <option value="แผนก 3">แผนก 3</option>
-                                <option value="แผนก 4">แผนก 4</option>
-                                <option value="แผนก 5">แผนก 5</option>
-                                <option value="แผนก 6">แผนก 6</option>
-                                <option value="แผนก 7">แผนก 7</option>
-                                <option value="แผนก 8">แผนก 8</option>
-                                <option value="แผนก 9">แผนก 9</option>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700">ประเภท</label>
+                            <select id="type" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg focus:border-emerald-500 focus:ring-emerald-500" required>
+                                <option value="" disabled selected>เลือกประเภท (Select Type)</option>
+                                <option value="รายรับ">รายรับ (Income)</option>
+                                <option value="รายจ่าย">รายจ่าย (Expense)</option>
                             </select>
                         </div>
-            
-                        <!-- Field 3: รหัสพนักงาน (type="number") -->
-                        <div>
-                            <label for="employee_id" class="block text-sm font-medium text-gray-700 mb-1">3. รหัสพนักงาน (ตัวเลขเท่านั้น)</label>
-                            <input type="number" id="employee_id" name="employee_id" required
-                                   class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 transition duration-150 ease-in-out"
-                                   placeholder="เช่น 123456">
-                        </div>
-                    </fieldset>
 
-                    <!-- --- ข้อมูลจำนวน/พื้นที่ (Number and Area Group) --- -->
-                    <fieldset class="border border-gray-200 p-4 rounded-xl shadow-sm space-y-4">
-                        <legend class="text-lg font-semibold text-gray-700 px-2">ข้อมูลจำนวน/พื้นที่ (รองรับ , และทศนิยม 2 ตำแหน่ง)</legend>
-
-                        <!-- Field 4: จำนวนแปลง -->
-                        <div>
-                            <label for="number_of_plots" class="block text-sm font-medium text-gray-700 mb-1">4. จำนวนแปลง</label>
-                            <input type="text" id="number_of_plots" name="number_of_plots" required
-                                   class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 transition duration-150 ease-in-out"
-                                   placeholder="กรอกจำนวนแปลง (เช่น 1,500.50)"
-                                   oninput="formatDecimalInput(this)">
+                        <div class="mb-4">
+                            <label for="category" class="block text-sm font-medium text-gray-700">หมวดหมู่</label>
+                            <select id="category" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg focus:border-emerald-500 focus:ring-emerald-500" required disabled>
+                                <option value="" disabled selected>เลือกประเภทก่อน</option>
+                            </select>
                         </div>
 
-                        <!-- Field 5: พื้นที่ไร่ -->
-                        <div>
-                            <label for="area_rai" class="block text-sm font-medium text-gray-700 mb-1">5. พื้นที่ไร่</label>
-                            <input type="text" id="area_rai" name="area_rai" required
-                                   class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 transition duration-150 ease-in-out"
-                                   placeholder="กรอกพื้นที่เป็นไร่ (เช่น 125.50)"
-                                   oninput="formatDecimalInput(this)">
+                        <div class="mb-4">
+                            <label for="amount" class="block text-sm font-medium text-gray-700">จำนวนเงิน (บาท)</label>
+                            <input type="number" id="amount" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg focus:border-emerald-500 focus:ring-emerald-500" placeholder="ระบุจำนวนเงิน" required min="0">
                         </div>
-                    </fieldset>
 
-                    <!-- --- ประเภทพืช (Crop Type Dropdown) --- -->
-                    <div>
-                        <label for="crop_type" class="block text-sm font-medium text-gray-700 mb-1">ประเภทพืช</label>
-                        <select id="crop_type" name="crop_type" required
-                                class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 transition duration-150 ease-in-out bg-white">
-                            <option value="" disabled selected>--- เลือกประเภทพืช ---</option>
-                            <option value="อ้อยGPS">อ้อยGPS</option>
-                            <option value="อ้อยGPSพืชอื่น">อ้อยGPSพืชอื่น</option>
-                            <option value="อ้อยทั่วไป">อ้อยทั่วไป</option>
-                            <option value="มันสำปะหลัง">มันสำปะหลัง</option>
-                            <option value="นาข้าว">นาข้าว</option>
-                            <option value="อื่นๆ">อื่นๆ</option>
-                        </select>
-                    </div>
-
-                    <!-- Submit and Clear Buttons for New Data -->
-                    <div class="pt-4 flex space-x-4">
-                        <button type="button" id="clearButton"
-                                class="w-1/3 flex justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-md text-lg font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition duration-150 ease-in-out">
-                            เคลียร์ข้อมูล
+                        <div class="mb-6">
+                            <label for="datetime-input" class="block text-sm font-medium text-gray-700">วัน-เวลา (ย้อนหลังได้)</label>
+                            <input type="datetime-local" id="datetime-input" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg focus:border-emerald-500 focus:ring-emerald-500" required>
+                        </div>
+                        
+                        <button type="submit" id="save-button" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg transition duration-150 ease-in-out shadow-md shadow-emerald-300">
+                            บันทึกรายการ
                         </button>
-                        <button type="submit" id="submitButton"
-                                class="w-2/3 flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-xl text-lg font-medium text-white bg-emerald-500 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition duration-150 ease-in-out disabled:opacity-50">
-                            บันทึกข้อมูล
-                        </button>
-                    </div>
-                </form>
-            </div>
-            
-            <!-- Tab 2: กราฟสรุป (Pie Chart & Bar Chart & Line Chart) -->
-            <div id="tab2-content" class="tab-pane hidden">
-                
-                <!-- Section 1: Pie Chart -->
-                <p class="text-lg font-semibold text-gray-700 mb-4 text-center">
-                    1. สัดส่วนพื้นที่ไร่รวมตามประเภทพืช (กราฟวงกลม)
-                </p>
-                <div id="pie_chart_container" class="p-4 bg-gray-50 rounded-xl shadow-inner relative mb-8" style="height: 400px;">
-                    <canvas id="cumulativeAreaPieChart"></canvas>
-                    <!-- Loading overlay for the whole tab -->
-                    <div id="chart_loading" class="absolute inset-0 flex items-center justify-center bg-gray-50/75 rounded-xl">
-                        <div class="text-center text-gray-500">
-                            <svg class="animate-spin h-8 w-8 text-emerald-500 inline-block mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            กำลังโหลดข้อมูลกราฟ...
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section 2: Bar Chart -->
-                <p class="text-lg font-semibold text-gray-700 mb-4 text-center">
-                    2. เปรียบเทียบพื้นที่ไร่รวมตามประเภทพืช (กราฟแท่ง)
-                </p>
-                <div id="bar_chart_container" class="p-4 bg-gray-50 rounded-xl shadow-inner relative mb-8" style="height: 400px;">
-                    <canvas id="cumulativeAreaBarChart"></canvas>
-                </div>
-                
-                <!-- Section 3: Line Chart (NEW) -->
-                <p class="text-lg font-semibold text-gray-700 mb-4 text-center">
-                    3. พื้นที่ไร่รวมสะสมตามวันที่บันทึก (กราฟเส้น)
-                </p>
-                <div id="line_chart_container" class="p-4 bg-gray-50 rounded-xl shadow-inner relative" style="height: 400px;">
-                    <canvas id="cumulativeAreaLineChart"></canvas>
+                    </form>
                 </div>
             </div>
+        </div>
+        
+        <!-- Main Content Area -->
+        <div class="w-full md:w-2/3 p-4 md:p-6 lg:p-8 flex flex-col space-y-4 custom-scroll overflow-y-auto">
+            
+            <!-- Tab Navigation (UPDATED) -->
+            <div class="flex border-b border-gray-200">
+                <button id="tab-summary" class="main-tab active-main-tab" onclick="showView('summary')">
+                    📊 ภาพรวมสรุปรายการ
+                </button>
+                <button id="tab-dashboard" class="main-tab" onclick="showView('dashboard')">
+                    📈 แดชบอร์ดวิเคราะห์
+                </button>
+                <button id="tab-records" class="main-tab" onclick="showView('records')">
+                    📝 รายการบันทึกล่าสุด
+                </button>
+            </div>
 
-            <!-- Tab 3: ตารางข้อมูล (Old Tab 2) -->
-            <div id="tab3-content" class="tab-pane hidden">
-                <div id="data_table_container" class="overflow-x-auto">
-                    <!-- Loading status for table will be handled by existing script -->
-                    <div id="table_loading_status" class="text-center text-gray-500 py-8">
-                        <svg class="animate-spin h-6 w-6 text-emerald-500 inline-block mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <!-- Summary View (Existing content - REMOVED RECENT RECORDS SECTION) -->
+            <div id="summary-view" class="space-y-8">
+                
+                <!-- Summary Section -->
+                <div id="summary-section" class="space-y-6 pt-4">
+                    <!-- Title Section -->
+                    <div class="flex items-end justify-between border-b pb-2 border-emerald-200">
+                        <h2 class="text-2xl font-bold text-emerald-800">สรุปตามช่วงเวลา</h2>
+                        <span id="summary-title-period" class="text-lg font-medium text-gray-600 mb-0.5"></span>
+                    </div>
+                    
+                    <!-- Time Range Tabs -->
+                    <div class="flex flex-wrap gap-2 text-sm font-medium text-gray-700">
+                        <button class="time-tab active-tab" data-period="daily">สรุปวันนี้</button>
+                        <button class="time-tab" data-period="weekly">สรุปสัปดาห์</button>
+                        <button class="time-tab" data-period="monthly">สรุปเดือน</button>
+                        <button class="time-tab" data-period="yearly">สรุปปี</button>
+                    </div>
+
+                    <!-- Month Selector Container (Hidden by default, shown for 'monthly' tab) -->
+                    <div id="month-selector-container" class="hidden">
+                        <label for="month-selector" class="block text-sm font-semibold text-gray-700 mb-1">เลือกเดือนที่ต้องการสรุป:</label>
+                        <select id="month-selector" class="w-full md:w-1/3 p-2 border border-gray-300 rounded-lg focus:border-emerald-500 focus:ring-emerald-500 shadow-sm"></select>
+                    </div>
+                    
+                    <!-- Year Selector Container (Hidden by default, shown for 'yearly' tab) -->
+                    <div id="year-selector-container" class="hidden">
+                        <label for="year-selector" class="block text-sm font-semibold text-gray-700 mb-1">เลือกปีที่ต้องการสรุป:</label>
+                        <select id="year-selector" class="w-full md:w-1/3 p-2 border border-gray-300 rounded-lg focus:border-emerald-500 focus:ring-emerald-500 shadow-sm"></select>
+                    </div>
+
+                    <style>
+                        .time-tab {
+                            padding: 8px 16px;
+                            border-radius: 9999px; /* Full rounded */
+                            border: 1px solid #d1fae5; /* Light emerald border */
+                            background-color: #ecfdf5; /* Very light emerald bg */
+                            transition: all 0.2s;
+                        }
+                        .time-tab:hover {
+                            background-color: #d1fae5;
+                        }
+                        .active-tab {
+                            background-color: #059669; /* Deep emerald */
+                            color: white;
+                            border-color: #059669;
+                            font-weight: 600;
+                        }
+                    </style>
+
+                    <!-- Summary Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-emerald-500">
+                            <p class="text-sm text-gray-500">รวมรายรับ</p>
+                            <p id="summary-income" class="text-2xl font-extrabold text-emerald-600 mt-1">0.00</p>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-red-500">
+                            <p class="text-sm text-gray-500">รวมรายจ่าย</p>
+                            <p id="summary-expense" class="text-2xl font-extrabold text-red-600 mt-1">0.00</p>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-blue-500">
+                            <p class="text-sm text-gray-500">คงเหลือสุทธิ</p>
+                            <p id="summary-net" class="text-2xl font-extrabold text-blue-600 mt-1">0.00</p>
+                        </div>
+                    </div>
+
+                    <!-- Chart Canvas -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
+                        <div class="bg-white p-6 rounded-xl shadow-xl border border-emerald-100">
+                            <h3 class="text-lg font-semibold text-emerald-700 mb-4">กราฟสรุปรายรับตามหมวดหมู่</h3>
+                            <canvas id="income-chart"></canvas>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-xl border border-emerald-100">
+                            <h3 class="text-lg font-semibold text-red-700 mb-4">กราฟสรุปรายจ่ายตามหมวดหมู่</h3>
+                            <canvas id="expense-chart"></canvas>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div> <!-- End of summary-view -->
+            
+            <!-- Dashboard View -->
+            <div id="dashboard-view" class="space-y-8 pt-4 hidden">
+                <h2 class="text-2xl font-bold text-emerald-800 border-b pb-2 mb-4 border-emerald-200">แดชบอร์ดสรุปภาพรวมทั้งหมด</h2>
+
+                <!-- All-Time Totals -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white p-5 rounded-xl shadow-xl border-l-4 border-emerald-600">
+                        <p class="text-sm text-gray-500">รวมรายรับ (ตลอดเวลา)</p>
+                        <p id="dashboard-total-income" class="text-3xl font-extrabold text-emerald-700 mt-1">0.00</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl shadow-xl border-l-4 border-red-600">
+                        <p class="text-sm text-gray-500">รวมรายจ่าย (ตลอดเวลา)</p>
+                        <p id="dashboard-total-expense" class="text-3xl font-extrabold text-red-700 mt-1">0.00</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl shadow-xl border-l-4 border-blue-600">
+                        <p class="text-sm text-gray-500">เงินคงเหลือสุทธิ (ตลอดเวลา)</p>
+                        <p id="dashboard-net-balance" class="text-3xl font-extrabold text-blue-700 mt-1">0.00</p>
+                    </div>
+                </div>
+
+                <!-- Monthly Trend Chart -->
+                <div class="bg-white p-6 rounded-xl shadow-xl border border-emerald-100">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4">แนวโน้มรายรับและรายจ่ายรายเดือน (12 เดือนล่าสุด)</h3>
+                    <canvas id="monthly-trend-chart"></canvas>
+                </div>
+                
+                <!-- Top Categories -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
+                    <div class="bg-white p-6 rounded-xl shadow-xl border border-emerald-100">
+                        <h3 class="text-lg font-semibold text-emerald-700 mb-4">Top 5 รายรับยอดนิยม (ตลอดเวลา)</h3>
+                        <ul id="top-income-list" class="space-y-2"></ul>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-xl border border-emerald-100">
+                        <h3 class="text-lg font-semibold text-red-700 mb-4">Top 5 รายจ่ายสูงสุด (ตลอดเวลา)</h3>
+                        <ul id="top-expense-list" class="space-y-2"></ul>
+                    </div>
+                </div>
+
+            </div> <!-- End of dashboard-view -->
+            
+            <!-- Recent Records View (NEW DEDICATED TAB) -->
+            <div id="records-view" class="space-y-8 pt-4 hidden">
+                <div id="recent-records-section">
+                    <h2 class="text-2xl font-bold text-emerald-800 border-b pb-2 mb-4 border-emerald-200">รายการบันทึกล่าสุด 100 รายการ</h2>
+                    <div id="loading-spinner" class="text-center p-8 hidden">
+                        <svg class="animate-spin h-8 w-8 text-emerald-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        กำลังโหลดข้อมูล...
+                        <p class="mt-2 text-emerald-600">กำลังโหลดข้อมูล...</p>
                     </div>
-                    <!-- Table will be rendered here -->
+                    <div id="records-list" class="space-y-3">
+                        <!-- Records will be injected here -->
+                    </div>
                 </div>
-            </div>
-
-            <!-- Tab 4: แผนที่ (Old Tab 3) -->
-            <div id="tab4-content" class="tab-pane hidden p-4">
-                <p class="text-lg font-semibold text-gray-700 mb-4 text-center">
-                    ตำแหน่งจุด GCP โรงงานน้ำตาลราชสีมา
-                </p>
-                <div class="flex justify-center w-full">
-                    <!-- Google Maps Iframe for Ratchasima Sugar Mill GCP points -->
-                    <iframe src="https://www.google.com/maps/d/embed?mid=1b5VN3RYU6VkgXqHDJ2mZdZOjkIZj4A-t&ehbc=2E312F&noprof=1" 
-                            class="w-full rounded-xl shadow-lg" 
-                            style="height: 500px; border: 0;" 
-                            frameborder="0" allowfullscreen="" aria-hidden="false" tabindex="0">
-                    </iframe>
-                </div>
-            </div>
-
-            <!-- Status Message Box (Shared) -->
-            <div id="statusMessage" class="mt-6 p-4 rounded-lg text-center hidden" role="alert">
-                <!-- Messages will be displayed here -->
             </div>
             
         </div>
-
     </div>
-
+    
+    <!-- JavaScript Logic -->
     <script>
-        // Global state and constants
-        let isEditing = null; // State for Table Editing (Tab 3) - stores rowIndex being edited
-        let pieChartInstance = null; // Store Chart.js instance for PIE
-        let barChartInstance = null; // Store Chart.js instance for BAR
-        let lineChartInstance = null; // Store Chart.js instance for LINE (NEW)
-        
-        // Set the SCRIPT_URL to the latest deployed URL
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzsPfa9-vFyVSyzA5kGeL_lGAQN4mfSYonO9kTZQCQkV5jSjws58ubi9vNL_mbvJ6Xn/exec';
-
-        // --- Core Utility Functions ---
-
-        // Helper Functions for Number Formatting
-        function formatDecimalInput(input) {
-            let value = input.value;
-            value = value.replace(/[^\d.,]/g, '');
-            const parts = value.split('.');
-            if (parts.length > 2) {
-                value = parts[0] + '.' + parts.slice(1).join('');
-            }
-            if (value.includes('.')) {
-                const [integer, decimal] = value.split('.');
-                if (decimal.length > 2) {
-                    value = integer + '.' + decimal.substring(0, 2);
-                }
-            }
-            let cleanValue = value.replace(/,/g, '');
-            let integerPart = cleanValue.split('.')[0];
-            const decimalPart = cleanValue.split('.')[1] ? '.' + cleanValue.split('.')[1] : '';
-            integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-            input.value = integerPart + decimalPart;
-        }
-
-        function cleanupValue(value) {
-            if (typeof value !== 'string') return value;
-            return value.replace(/,/g, '').trim();
-        }
-        
-        // Converts raw number string to display format with commas and 2 decimals.
-        function formatNumberForDisplay(value) {
-            if (value === null || value === undefined || value === '') return '';
-            let num = parseFloat(String(value).replace(/,/g, ''));
-            if (isNaN(num)) return value;
-            return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-        }
-
-        // Helper Functions for UI Status
-        function showStatus(message, type) {
-            const statusMessage = document.getElementById('statusMessage');
-            statusMessage.textContent = message;
-            statusMessage.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-blue-100', 'text-blue-800');
-
-            if (type === 'success') {
-                statusMessage.classList.add('bg-green-100', 'text-green-800');
-            } else if (type === 'error') {
-                statusMessage.classList.add('bg-red-100', 'text-red-800');
-            } else if (type === 'loading') {
-                statusMessage.classList.add('bg-blue-100', 'text-blue-800');
-            }
-        }
-
-        // Helper function for API calls with retry
-        async function fetchWithRetry(url, options, retries = 3) {
-            for (let i = 0; i < retries; i++) {
-                try {
-                    const response = await fetch(url, options);
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    return response;
-                } catch (error) {
-                    if (i < retries - 1) {
-                        const delay = Math.pow(2, i) * 1000;
-                        console.warn(`Attempt ${i + 1} failed. Retrying in ${delay / 1000}s...`, error);
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                    } else {
-                        throw error;
-                    }
-                }
-            }
-        }
-        
-        /** Fetches all data from Apps Script. */
-        async function fetchAllData() {
-            try {
-                const response = await fetchWithRetry(SCRIPT_URL, { method: 'GET' });
-                const text = await response.text();
-                
-                let dataResult;
-                try {
-                    dataResult = JSON.parse(text);
-                } catch(e) {
-                    throw new Error("Apps Script response format error: " + text);
-                }
-
-                if (dataResult.error) {
-                    throw new Error(dataResult.error);
-                }
-                return dataResult;
-
-            } catch (error) {
-                console.error('Error fetching data:', error);
-                showStatus('❌ ไม่สามารถโหลดข้อมูลได้: ' + error.message, 'error');
-                return null;
-            }
-        }
-
-        // --- Tab 3: Data Table Functions (Unchanged) ---
-
-        /** Renders the fetched data into the HTML table. */
-        function renderDataTable(data, headers) {
-            const container = document.getElementById('data_table_container');
-            const loadingStatus = document.getElementById('table_loading_status');
-
-            if (loadingStatus) { 
-                loadingStatus.classList.add('hidden');
-            }
-            container.querySelector('table')?.remove(); // Clear previous table
-
-            if (data.length === 0) {
-                container.innerHTML = '<p class="text-center text-gray-500 py-8">ยังไม่มีข้อมูลบันทึกไว้ใน Google Sheet.</p>';
-                return;
-            }
-
-            // FILTER: Remove 'Timestamp' from the headers displayed in the table
-            const displayHeaders = headers.filter(h => h !== 'Timestamp'); 
-
-            // Create table structure
-            let tableHTML = `
-                <table class="data-table min-w-full divide-y divide-gray-200">
-                    <thead>
-                        <tr>
-                            ${displayHeaders.map(h => `<th class="px-3 py-3 text-xs uppercase tracking-wider">${h}</th>`).join('')}
-                            <th class="px-3 py-3 text-xs uppercase tracking-wider">การดำเนินการ</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            data.forEach((row) => {
-                const rowId = `row-${row.rowIndex}`;
-                tableHTML += `<tr id="${rowId}" data-row-index="${row.rowIndex}">`;
-                
-                // Render cells - iterate over displayHeaders
-                displayHeaders.forEach(header => {
-                    let cellValue = row[header] || '';
-                    if (header === 'จำนวนแปลง' || header === 'พื้นที่ไร่') {
-                         cellValue = formatNumberForDisplay(cellValue);
-                    }
-                    
-                    tableHTML += `<td data-header="${header}" class="whitespace-nowrap">${cellValue}</td>`;
-                });
-                
-                // Action Buttons - Updated color to emerald
-                tableHTML += `
-                    <td class="flex space-x-2 whitespace-nowrap">
-                        <button class="edit-btn text-emerald-600 hover:text-emerald-800 font-medium p-1 rounded transition duration-150">แก้ไข</button>
-                    </td>
-                </tr>`;
-            });
-
-            tableHTML += `</tbody></table>`;
-            container.innerHTML += tableHTML; // Use += to append after loading status div
-        }
-        
-        /** Fetches data and renders the table (for Tab 3). */
-        async function fetchDataAndRenderTable() {
-            const loadingStatus = document.getElementById('table_loading_status');
+        document.addEventListener('DOMContentLoaded', () => {
+            const loginScreen = document.getElementById('login-screen');
+            const mainApp = document.getElementById('main-app');
+            const recordForm = document.getElementById('record-form');
+            const typeSelect = document.getElementById('type');
+            const categorySelect = document.getElementById('category');
+            const datetimeInput = document.getElementById('datetime-input');
+            const recordsList = document.getElementById('records-list');
+            const loadingSpinner = document.getElementById('loading-spinner');
+            const saveButton = document.getElementById('save-button');
+            const summaryTitlePeriod = document.getElementById('summary-title-period');
+            const monthSelectorContainer = document.getElementById('month-selector-container');
+            const monthSelector = document.getElementById('month-selector');
+            const yearSelectorContainer = document.getElementById('year-selector-container');
+            const yearSelector = document.getElementById('year-selector');
             
-            if (loadingStatus) {
-                loadingStatus.classList.remove('hidden');
-            }
-            document.getElementById('data_table_container').querySelector('table')?.remove(); // Clear previous table
+            // New UI Elements
+            const summaryView = document.getElementById('summary-view');
+            const dashboardView = document.getElementById('dashboard-view');
+            const recordsView = document.getElementById('records-view'); // NEW: Records View
+            const tabSummary = document.getElementById('tab-summary');
+            const tabDashboard = document.getElementById('tab-dashboard');
+            const tabRecords = document.getElementById('tab-records'); // NEW: Records Tab
+            const dashboardTotalIncome = document.getElementById('dashboard-total-income');
+            const dashboardTotalExpense = document.getElementById('dashboard-total-expense');
+            const dashboardNetBalance = document.getElementById('dashboard-net-balance');
+            const topIncomeList = document.getElementById('top-income-list');
+            const topExpenseList = document.getElementById('top-expense-list');
 
-            const dataResult = await fetchAllData();
 
-            if (dataResult) {
-                renderDataTable(dataResult.data, dataResult.headers);
-                showStatus('✅ โหลดข้อมูลตารางสำเร็จ', 'success');
-            }
-        }
-        
-        /** Toggles a table row into editable mode. */
-        function startEdit(rowElement) {
-            if (isEditing) {
-                cancelEdit(document.getElementById(`row-${isEditing}`));
-            }
+            Chart.register(ChartDataLabels);
+
+            // --- 1. UTILITY FUNCTIONS ---
+
+            /**
+             * Formats a number as a Thai currency string.
+             * @param {number} amount 
+             * @returns {string}
+             */
+            const formatCurrency = (amount) => {
+                return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 2 }).format(amount).replace('฿', '').trim() + ' บาท';
+            };
             
-            isEditing = rowElement.dataset.rowIndex;
-            rowElement.classList.add('bg-yellow-50');
-
-            const headersToEdit = ["ชื่อ สกุล", "แผนก", "รหัสพนักงาน", "จำนวนแปลง", "พื้นที่ไร่", "ประเภทพืช"];
-
-            rowElement.querySelectorAll('td').forEach(cell => {
-                const header = cell.dataset.header;
-                if (!header || !headersToEdit.includes(header)) return;
-
-                const currentValue = cell.textContent.trim();
-                cell.dataset.originalValue = currentValue;
-                cell.innerHTML = '';
-
-                let inputElement;
-
-                if (header === 'แผนก') {
-                    inputElement = document.createElement('select');
-                    inputElement.name = header;
-                    for (let i = 1; i <= 9; i++) {
-                        const option = document.createElement('option');
-                        option.value = `แผนก ${i}`;
-                        option.textContent = `แผนก ${i}`;
-                        if (currentValue === `แผนก ${i}`) {
-                            option.selected = true;
-                        }
-                        inputElement.appendChild(option);
-                    }
-                } else if (header === 'ประเภทพืช') {
-                    inputElement = document.createElement('select');
-                    inputElement.name = header;
-                    const options = ["อ้อยGPS", "อ้อยGPSพืชอื่น", "อ้อยทั่วไป", "มันสำปะหลัง", "นาข้าว", "อื่นๆ"];
-                    options.forEach(opt => {
-                        const option = document.createElement('option');
-                        option.value = opt;
-                        option.textContent = opt;
-                        if (currentValue === opt) {
-                            option.selected = true;
-                        }
-                        inputElement.appendChild(option);
+            /**
+             * Formats a date object into a readable Thai datetime string.
+             * @param {string} isoString 
+             * @returns {string}
+             */
+            const formatDateTime = (isoString) => {
+                try {
+                    const date = new Date(isoString);
+                    return date.toLocaleString('th-TH', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
                     });
-                } else if (header === 'รหัสพนักงาน') {
-                    inputElement = document.createElement('input');
-                    inputElement.type = 'number';
-                    inputElement.value = currentValue;
-                    inputElement.required = true;
-                } else if (header === 'จำนวนแปลง' || header === 'พื้นที่ไร่') {
-                    inputElement = document.createElement('input');
-                    inputElement.type = 'text';
-                    inputElement.value = currentValue;
-                    inputElement.required = true;
-                    inputElement.setAttribute('oninput', 'formatDecimalInput(this)');
-                } else {
-                    inputElement = document.createElement('input');
-                    inputElement.type = 'text';
-                    inputElement.value = currentValue;
-                    inputElement.required = true;
+                } catch (e) {
+                    return 'ไม่ทราบเวลา';
                 }
-                
-                cell.appendChild(inputElement);
-            });
-
-            const actionCell = rowElement.querySelector('td:last-child');
-            actionCell.innerHTML = `
-                <button class="save-btn text-green-600 hover:text-green-900 font-medium p-1 rounded transition duration-150">บันทึก</button>
-                <button class="cancel-btn text-red-600 hover:text-red-900 font-medium p-1 rounded transition duration-150">ยกเลิก</button>
-            `;
-        }
-
-        /** Saves the edited data back to Apps Script (UPDATE action). */
-        async function saveEdit(rowElement) {
-            const rowIndex = rowElement.dataset.rowIndex;
-            if (!rowIndex) return;
-
-            showStatus('กำลังบันทึกการแก้ไข...', 'loading');
+            };
             
-            const submissionData = new URLSearchParams();
-            submissionData.append('rowIndex', rowIndex);
-            submissionData.append('timestamp', new Date().toLocaleString("th-TH"));
+            /**
+             * Converts a JavaScript Date object to the required format for datetime-local input
+             * @param {Date} date 
+             * @returns {string}
+             */
+            const toDateTimeLocal = (date) => {
+                const pad = (num) => (num < 10 ? '0' : '') + num;
+                return date.getFullYear() + '-' +
+                    pad(date.getMonth() + 1) + '-' +
+                    pad(date.getDate()) + 'T' +
+                    pad(date.getHours()) + ':' +
+                    pad(date.getMinutes());
+            };
+            
+            /**
+             * Creates a Date object from a serial number (e.g., from Google Sheets).
+             * @param {number} serial 
+             * @returns {Date}
+             */
+            const serialToDate = (serial) => {
+                // Google Sheets serial day 1 is Dec 30, 1899
+                const date = new Date(Date.UTC(1899, 11, 30));
+                date.setUTCDate(date.getUTCDate() + serial);
+                return date;
+            }
 
-            let isValid = true;
-            rowElement.querySelectorAll('td').forEach(cell => {
-                const header = cell.dataset.header;
-                const input = cell.querySelector('input, select');
+            /**
+             * Switches between Summary, Dashboard, and Records views. (UPDATED)
+             * @param {string} viewId - 'summary', 'dashboard' or 'records'
+             */
+            window.showView = (viewId) => {
+                currentView = viewId;
                 
-                if (input) {
-                    let value = input.value;
+                // Reset tab classes
+                tabSummary.classList.remove('active-main-tab');
+                tabDashboard.classList.remove('active-main-tab');
+                tabRecords.classList.remove('active-main-tab'); // New tab reset
+
+                // Hide all views
+                summaryView.classList.add('hidden');
+                dashboardView.classList.add('hidden');
+                recordsView.classList.add('hidden'); // New view hide
+
+                // Show active view and update tab class
+                if (viewId === 'summary') {
+                    tabSummary.classList.add('active-main-tab');
+                    summaryView.classList.remove('hidden');
+                    updateAllSummaries(); 
+                } else if (viewId === 'dashboard') {
+                    tabDashboard.classList.add('active-main-tab');
+                    dashboardView.classList.remove('hidden');
+                    updateDashboard(); 
+                } else if (viewId === 'records') {
+                    tabRecords.classList.add('active-main-tab');
+                    recordsView.classList.remove('hidden');
+                    renderRecords(); // Ensure records are rendered/updated
+                }
+            };
+
+
+            // --- 2. GAS COMMUNICATION (JSONP) ---
+            
+            /**
+             * Sends a request to Google App Script using JSONP.
+             * @param {object} params - Request parameters (including action).
+             * @returns {Promise<object>} - Resolves with the data from GAS.
+             */
+            const gasRequest = (params) => {
+                return new Promise((resolve, reject) => {
+                    const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
                     
-                    if (header === 'จำนวนแปลง' || header === 'พื้นที่ไร่') {
-                        value = cleanupValue(value);
-                        if (isNaN(parseFloat(value)) || value === '') {
-                             isValid = false;
-                             console.error(`ค่า ${header} ต้องเป็นตัวเลขที่ถูกต้อง`);
-                             showStatus(`❌ ค่า ${header} ต้องเป็นตัวเลขที่ถูกต้อง`, 'error');
-                             return;
+                    window[callbackName] = (data) => {
+                        delete window[callbackName];
+                        document.body.removeChild(script);
+                        resolve(data);
+                    };
+
+                    const url = new URL(GAS_URL);
+                    url.searchParams.set('callback', callbackName);
+                    
+                    // Add all other parameters
+                    for (const key in params) {
+                        // Ensure all data is stringified for safe URL transport, especially objects/arrays
+                        url.searchParams.set(key, typeof params[key] === 'object' ? JSON.stringify(params[key]) : params[key]);
+                    }
+
+                    const script = document.createElement('script');
+                    script.src = url.toString();
+                    document.body.appendChild(script);
+
+                    script.onerror = (e) => {
+                        delete window[callbackName];
+                        document.body.removeChild(script);
+                        reject(new Error("GAS Request failed or timed out."));
+                    };
+                });
+            };
+            
+            /**
+             * Retries the GAS request with exponential backoff.
+             */
+            const retryGasRequest = async (params, maxRetries = 3) => {
+                for (let i = 0; i < maxRetries; i++) {
+                    try {
+                        return await gasRequest(params);
+                    } catch (error) {
+                        if (i === maxRetries - 1) {
+                            throw error; // Throw on final failure
                         }
+                        const delay = Math.pow(2, i) * 1000;
+                        console.warn(`Request failed, retrying in ${delay / 1000}s...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                }
+            };
+            
+            /**
+             * Loads all data from Google Sheets.
+             */
+            const loadRecords = async () => {
+                loadingSpinner.classList.remove('hidden');
+                recordsList.innerHTML = '';
+                
+                try {
+                    const result = await retryGasRequest({ action: 'load' });
+                    
+                    if (result && result.status === 'success' && Array.isArray(result.data)) {
+                        // Header: ID, Timestamp, Type, Category, Amount, Date, User, EditTimestamp
+                        const header = ['ID', 'Timestamp', 'Type', 'Category', 'Amount', 'Date', 'User', 'EditTimestamp'];
+                        
+                        records = result.data.slice(1) // Skip header row
+                            .map(row => {
+                                const record = {};
+                                header.forEach((key, index) => {
+                                    record[key] = row[index]; 
+                                });
+                                // Convert Sheets serial number to ISO string for easier JS use
+                                if (typeof record.Date === 'number' && record.Date > 1) {
+                                    record.Date = serialToDate(record.Date).toISOString();
+                                }
+                                // Ensure Timestamp is a string for easier JS use
+                                if (typeof record.Timestamp === 'number' && record.Timestamp > 1) {
+                                    record.Timestamp = serialToDate(record.Timestamp).toISOString();
+                                }
+                                return record;
+                            })
+                            // Sort by original date (newest first for most tasks, but we'll use Timestamp for list)
+                            .sort((a, b) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime());
+                            
+                        populateMonthSelector(); 
+                        populateYearSelector(); 
+                        
+                        // Update the relevant view based on where the user currently is
+                        if (currentView === 'summary') {
+                            updateAllSummaries();
+                        } else if (currentView === 'dashboard') {
+                            updateDashboard();
+                        } else if (currentView === 'records') {
+                            renderRecords();
+                        }
+                        
+                        Swal.close(); 
+                        return;
                     }
                     
-                    let keyMap = {
-                        "ชื่อ สกุล": "full_name", "แผนก": "department", "รหัสพนักงาน": "employee_id",
-                        "จำนวนแปลง": "number_of_plots", "พื้นที่ไร่": "area_rai", "ประเภทพืช": "crop_type"
+                    Swal.fire('ข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลได้: ' + (result ? result.message : 'โครงสร้างข้อมูลไม่ถูกต้อง'), 'error');
+                } catch (error) {
+                    console.error('Error loading records:', error);
+                    Swal.fire('ข้อผิดพลาด', 'การเชื่อมต่อล้มเหลว ลองใหม่อีกครั้ง: ' + error.message, 'error');
+                } finally {
+                    loadingSpinner.classList.add('hidden');
+                }
+            };
+
+            // --- 3. AUTHENTICATION ---
+
+            /**
+             * Handles the login process.
+             */
+            document.getElementById('login-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const username = document.getElementById('username').value.trim();
+                const password = document.getElementById('password').value;
+                
+                const user = USERS.find(u => u.name === username && u.password === password);
+                
+                if (user) {
+                    localStorage.setItem('currentUser', user.name);
+                    isLoggedIn = true;
+                    document.getElementById('current-user').textContent = user.name;
+                    loginScreen.classList.add('opacity-0');
+                    setTimeout(() => {
+                        loginScreen.classList.add('hidden');
+                        mainApp.classList.remove('hidden');
+                        // Load data and set initial time
+                        datetimeInput.value = toDateTimeLocal(new Date());
+                        loadRecords();
+                    }, 500);
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เข้าสู่ระบบล้มเหลว',
+                        text: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'
+                    });
+                }
+            });
+            
+            /**
+             * Logs the user out.
+             */
+            window.logout = () => {
+                localStorage.removeItem('currentUser');
+                isLoggedIn = false;
+                records = [];
+                mainApp.classList.add('hidden');
+                loginScreen.classList.remove('hidden', 'opacity-0');
+                // Reset state on logout
+                currentPeriod = 'daily'; 
+                selectedMonthYear = '';
+                selectedYear = new Date().getFullYear().toString();
+                currentView = 'summary';
+                tabSummary.classList.add('active-main-tab');
+                tabDashboard.classList.remove('active-main-tab');
+                tabRecords.classList.remove('active-main-tab');
+            };
+
+            // Check login status on load
+            const initialUser = localStorage.getItem('currentUser');
+            if (initialUser && USERS.some(u => u.name === initialUser)) {
+                isLoggedIn = true;
+                document.getElementById('current-user').textContent = initialUser;
+                loginScreen.classList.add('hidden', 'opacity-0');
+                mainApp.classList.remove('hidden');
+                datetimeInput.value = toDateTimeLocal(new Date());
+                loadRecords();
+            } else {
+                loginScreen.classList.remove('hidden');
+            }
+
+
+            // --- 4. FORM LOGIC & RECORD MANAGEMENT ---
+
+            /**
+             * Updates the category dropdown based on the selected type (รายรับ/รายจ่าย).
+             */
+            typeSelect.addEventListener('change', () => {
+                const type = typeSelect.value;
+                categorySelect.innerHTML = '<option value="" disabled selected>เลือกหมวดหมู่</option>';
+                categorySelect.disabled = true;
+
+                if (type && CATEGORIES[type]) {
+                    CATEGORIES[type].forEach(cat => {
+                        const option = document.createElement('option');
+                        option.value = cat;
+                        option.textContent = cat;
+                        categorySelect.appendChild(option);
+                    });
+                    categorySelect.disabled = false;
+                }
+            });
+            
+            /**
+             * Handles form submission for adding or editing a record.
+             */
+            recordForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const id = document.getElementById('record-id').value;
+                const type = typeSelect.value;
+                const category = categorySelect.value;
+                const amount = parseFloat(document.getElementById('amount').value);
+                const date = datetimeInput.value;
+                const user = localStorage.getItem('currentUser');
+                
+                if (isNaN(amount) || amount <= 0) {
+                    Swal.fire('ข้อผิดพลาด', 'จำนวนเงินต้องเป็นตัวเลขที่มากกว่า 0', 'warning');
+                    return;
+                }
+                
+                const action = id ? 'edit' : 'save';
+                const buttonText = id ? 'กำลังแก้ไข...' : 'กำลังบันทึก...';
+                
+                Swal.fire({
+                    title: buttonText,
+                    html: 'โปรดรอสักครู่ ระบบกำลังสื่อสารกับ Google Sheets...',
+                    didOpen: () => Swal.showLoading(),
+                    allowOutsideClick: false
+                });
+
+                try {
+                    const dataToSend = {
+                        Type: type,
+                        Category: category,
+                        Amount: amount,
+                        Date: date,
+                        User: user,
                     };
                     
-                    const fieldName = keyMap[header];
-                    if (fieldName) {
-                        submissionData.append(fieldName, value);
+                    let result;
+                    
+                    if (action === 'edit') {
+                        result = await retryGasRequest({ 
+                            action: 'edit',
+                            id: id,
+                            data: dataToSend
+                        });
+                    } else {
+                        result = await retryGasRequest({ 
+                            action: 'save',
+                            data: dataToSend
+                        });
                     }
+
+                    if (result && result.status === 'success') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: id ? 'แก้ไขสำเร็จ!' : 'บันทึกสำเร็จ!',
+                            text: 'รายการถูกบันทึกลง Google Sheets เรียบร้อยแล้ว',
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+                        recordForm.reset();
+                        document.getElementById('record-id').value = '';
+                        saveButton.textContent = 'บันทึกรายการ';
+                        datetimeInput.value = toDateTimeLocal(new Date()); // Reset time
+                        loadRecords(); // Reload data to show update
+                    } else {
+                        throw new Error(result ? result.message : 'ข้อความตอบกลับไม่ชัดเจน');
+                    }
+                } catch (error) {
+                    console.error('GAS operation error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: id ? 'แก้ไขล้มเหลว' : 'บันทึกล้มเหลว',
+                        text: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + error.message
+                    });
                 }
             });
-            
-            if (!isValid) {
-                 showStatus('❌ การแก้ไขไม่สมบูรณ์ กรุณาตรวจสอบข้อมูลตัวเลข', 'error');
-                 return;
-            }
 
-            try {
-                await fetchWithRetry(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: submissionData.toString()
+            /**
+             * Sets the form fields for editing an existing record.
+             * @param {object} record 
+             */
+            window.editRecord = (record) => {
+                document.getElementById('record-id').value = record.ID;
+                typeSelect.value = record.Type;
+                
+                // Manually trigger category update
+                typeSelect.dispatchEvent(new Event('change'));
+                categorySelect.value = record.Category;
+                
+                document.getElementById('amount').value = record.Amount;
+                
+                // Format the Sheets Date value (ISO string or serial) to datetime-local format
+                let dateToEdit = new Date(record.Date);
+                if (record.Date && typeof record.Date === 'number') {
+                    dateToEdit = serialToDate(record.Date);
+                }
+                datetimeInput.value = toDateTimeLocal(dateToEdit);
+                
+                saveButton.textContent = 'แก้ไขรายการ';
+                
+                // Scroll to top of the form
+                document.querySelector('.sticky').scrollIntoView({ behavior: 'smooth' });
+            };
+            
+            /**
+             * Deletes a record by ID.
+             * @param {string} id 
+             */
+            window.deleteRecord = async (id) => {
+                const record = records.find(r => r.ID === id);
+                if (!record) return;
+
+                const result = await Swal.fire({
+                    title: 'ยืนยันการลบ',
+                    html: `คุณแน่ใจหรือไม่ที่จะลบรายการ: <br><strong>${record.Type} (${record.Category}) ${formatCurrency(record.Amount)}</strong>?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'ใช่, ลบเลย!',
+                    cancelButtonText: 'ยกเลิก'
+                });
+                
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'กำลังลบ...',
+                        didOpen: () => Swal.showLoading(),
+                        allowOutsideClick: false
+                    });
+                    
+                    try {
+                        const deleteResult = await retryGasRequest({ 
+                            action: 'delete',
+                            id: id
+                        });
+
+                        if (deleteResult && deleteResult.status === 'success') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'ลบสำเร็จ!',
+                                showConfirmButton: false,
+                                timer: 1500
+                            });
+                            loadRecords(); // Reload data
+                        } else {
+                            throw new Error(deleteResult ? deleteResult.message : 'ข้อความตอบกลับไม่ชัดเจน');
+                        }
+                    } catch (error) {
+                        console.error('Delete operation error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'ลบล้มเหลว',
+                            text: 'เกิดข้อผิดพลาดในการลบข้อมูล: ' + error.message
+                        });
+                    }
+                }
+            };
+
+            /**
+             * Renders the list of records (only the last 100).
+             */
+            const renderRecords = () => {
+                const recentRecords = records.slice(0, 100);
+                
+                if (recentRecords.length === 0) {
+                    recordsList.innerHTML = '<p class="text-gray-500 text-center p-4 bg-white rounded-lg shadow-md">ยังไม่มีรายการบันทึก</p>';
+                    return;
+                }
+
+                recordsList.innerHTML = recentRecords.map(record => {
+                    const isIncome = record.Type === 'รายรับ';
+                    const amountClass = isIncome ? 'text-emerald-600' : 'text-red-600';
+                    const borderColor = isIncome ? 'border-emerald-400' : 'border-red-400';
+                    const editTime = record.EditTimestamp ? formatDateTime(record.EditTimestamp) : 'ไม่มี';
+
+                    return `
+                        <div class="bg-white p-4 rounded-xl shadow-lg border-l-4 ${borderColor} transition duration-200 hover:shadow-xl">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-500">${record.Type}: ${record.Category}</p>
+                                    <p class="text-xl font-extrabold ${amountClass} mt-1">${formatCurrency(record.Amount)}</p>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button onclick="editRecord(${JSON.stringify(record).replace(/"/g, '&quot;')})" class="text-blue-500 hover:text-blue-700 p-2 rounded-full hover:bg-blue-50 transition duration-150">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-3.646 3.646l-4.243 4.243V16h4.243l4.243-4.243-4.243-4.243z" /></svg>
+                                    </button>
+                                    <button onclick="deleteRecord('${record.ID}')" class="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition duration-150">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-400 mt-2 border-t pt-2 border-gray-100">
+                                <p>บันทึกเมื่อ: ${formatDateTime(record.Date)}</p>
+                                <p>ผู้บันทึก: ${record.User || 'ไม่ทราบ'}</p>
+                                <p>แก้ไขล่าสุด: ${editTime}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            };
+
+            /**
+             * Populates the month selector dropdown based on existing record dates.
+             */
+            const populateMonthSelector = () => {
+                monthSelector.innerHTML = '';
+                
+                if (records.length === 0) {
+                    const now = new Date();
+                    const currentMonthKey = now.getFullYear() + '-' + (now.getMonth() + 1).toString().padStart(2, '0');
+                    monthSelector.innerHTML = `<option value="${currentMonthKey}">เดือน ${now.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}</option>`;
+                    selectedMonthYear = currentMonthKey;
+                    return;
+                }
+
+                // 1. Find the earliest record date
+                const dates = records.map(r => new Date(r.Date).getTime()).filter(t => !isNaN(t));
+                if (dates.length === 0) return;
+                
+                const minTime = Math.min(...dates);
+                let startDate = new Date(minTime);
+                startDate.setDate(1); 
+                startDate.setHours(0, 0, 0, 0);
+
+                const today = new Date();
+                const currentMonth = today.getMonth();
+                const currentYear = today.getFullYear();
+                
+                // 2. Generate month list from earliest to current
+                const months = [];
+                let loopDate = new Date(startDate);
+
+                while (loopDate.getFullYear() < currentYear || (loopDate.getFullYear() === currentYear && loopDate.getMonth() <= currentMonth)) {
+                    const year = loopDate.getFullYear();
+                    const month = loopDate.getMonth() + 1; // JS month is 0-11
+                    const key = year + '-' + month.toString().padStart(2, '0');
+                    const display = `เดือน ${loopDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}`;
+
+                    months.push({ key, display });
+
+                    // Move to the next month
+                    loopDate.setMonth(loopDate.getMonth() + 1);
+                }
+                
+                // Reverse the list so the newest month is at the top
+                months.reverse().forEach(month => {
+                    const option = document.createElement('option');
+                    option.value = month.key;
+                    option.textContent = month.display;
+                    monthSelector.appendChild(option);
                 });
 
-                showStatus('✅ บันทึกการแก้ไขสำเร็จแล้ว! กำลังโหลดข้อมูลตารางใหม่', 'success');
-                isEditing = null;
-                // Force reload of table and chart tabs after update
-                await fetchDataAndRenderTable();
-                
-            } catch (error) {
-                console.error('Error saving data:', error);
-                showStatus(`❌ เกิดข้อผิดพลาดในการบันทึกการแก้ไข: ${error.message}`, 'error');
-            }
-        }
-
-        /** Reverts a row back to display mode with original values. */
-        function cancelEdit(rowElement) {
-            rowElement.querySelectorAll('td').forEach(cell => {
-                const originalValue = cell.dataset.originalValue;
-                if (originalValue !== undefined) {
-                    cell.textContent = originalValue;
-                    delete cell.dataset.originalValue;
-                }
-            });
-
-            const actionCell = rowElement.querySelector('td:last-child');
-            actionCell.innerHTML = `
-                <button class="edit-btn text-emerald-600 hover:text-emerald-800 font-medium p-1 rounded transition duration-150">แก้ไข</button>
-            `;
-            rowElement.classList.remove('bg-yellow-50');
-            isEditing = null;
-            showStatus('ยกเลิกการแก้ไข', 'loading');
-        }
-
-        // --- Tab 2: Chart Functions (UPDATED FOR LINE CHART) ---
-
-        /** * Prepares all chart data: Category aggregation (for Pie/Bar) and Time-series (for Line).
-         * NOTE: Assumes Timestamp is in Thai locale format (D/M/YYYY H:mm:ss, where YYYY is BE).
-         */
-        function prepareAllChartData(rawData) {
-            const categoryAggregation = {}; // Key: crop_type, Value: total_area_rai
-            const timeSeriesAggregation = {}; // Key: YYYY-MM-DD (CE), Value: daily_area_rai
-
-            rawData.forEach(row => {
-                const areaRai = parseFloat(cleanupValue(row['พื้นที่ไร่'])) || 0;
-                if (areaRai <= 0) return; 
-
-                // 1. Category Data (For Pie/Bar)
-                const cropType = row['ประเภทพืช'] || 'ไม่ระบุ'; 
-                if (!categoryAggregation[cropType]) {
-                    categoryAggregation[cropType] = 0;
-                }
-                categoryAggregation[cropType] += areaRai;
-
-                // 2. Time-series Data (For Line) - Use Timestamp
-                const timestamp = row['Timestamp'];
-                if (timestamp) {
-                    try {
-                        // Extract date part (D/M/YYYY)
-                        const datePart = timestamp.split(' ')[0].split(',')[0].trim();
-                        const parts = datePart.split('/');
-                        
-                        if (parts.length === 3) {
-                            // Convert BE (e.g., 2568) to CE (e.g., 2025)
-                            const day = parts[0].padStart(2, '0');
-                            const month = parts[1].padStart(2, '0');
-                            const yearCE = parseInt(parts[2], 10) > 2500 ? (parseInt(parts[2], 10) - 543) : parseInt(parts[2], 10);
-                            
-                            // Use ISO format for date key to ensure correct string sorting
-                            const dateKey = `${yearCE}-${month}-${day}`;
-                            
-                            if (!timeSeriesAggregation[dateKey]) {
-                                timeSeriesAggregation[dateKey] = 0;
-                            }
-                            timeSeriesAggregation[dateKey] += areaRai;
-                        }
-                    } catch (e) {
-                        console.error("Could not parse timestamp for chart:", timestamp, e);
-                    }
-                }
-            });
-
-            // Process Category Data
-            const categoryLabels = Object.keys(categoryAggregation);
-            const categoryData = categoryLabels.map(label => categoryAggregation[label]);
-            
-            // Process Time-series Data (Generate Cumulative Data)
-            const sortedDates = Object.keys(timeSeriesAggregation).sort();
-            let cumulativeTotal = 0;
-            const cumulativeData = sortedDates.map(date => {
-                cumulativeTotal += timeSeriesAggregation[date];
-                return cumulativeTotal;
-            });
-            
-            // Convert date keys back to a display format (D/M/YYYY CE)
-            const timeSeriesLabels = sortedDates.map(dateKey => {
-                const [yearCE, month, day] = dateKey.split('-');
-                return `${parseInt(day)}/${parseInt(month)}/${yearCE}`;
-            });
-
-            return {
-                category: { labels: categoryLabels, data: categoryData },
-                timeSeries: { labels: timeSeriesLabels, data: cumulativeData }
+                // Set the initial selected month to the newest one and update state
+                selectedMonthYear = months[0] ? months[0].key : (today.getFullYear() + '-' + (today.getMonth() + 1).toString().padStart(2, '0'));
+                monthSelector.value = selectedMonthYear;
             };
-        }
-        
-        /** Renders the Pie, Bar, and Line graphs (for Tab 2). */
-        function renderCharts(allChartData) {
-            const chartLoadingDiv = document.getElementById('chart_loading');
             
-            // Destroy existing instances
-            if (pieChartInstance) pieChartInstance.destroy();
-            if (barChartInstance) barChartInstance.destroy();
-            if (lineChartInstance) lineChartInstance.destroy(); // NEW DESTRUCTION
-            
-            // Grand Total Calculation (For Pie Chart Title)
-            const grandTotalRai = allChartData.category.data.reduce((acc, curr) => acc + curr, 0);
-            const formattedTotal = formatNumberForDisplay(grandTotalRai);
-            
-            // Define a set of vibrant colors for the segments/bars
-            const backgroundColors = [
-                '#059669', // Emerald
-                '#3b82f6', // Blue
-                '#f59e0b', // Amber
-                '#ef4444', // Red
-                '#8b5cf6', // Violet
-                '#14b8a6', // Teal
-                '#ec4899', // Pink
-                '#6366f1', // Indigo
-                '#a8a29e', // Stone
-                '#f97316', // Orange
-            ];
-            
-            // --- 1. PIE CHART RENDERING ---
-            const ctxPie = document.getElementById('cumulativeAreaPieChart').getContext('2d');
-            pieChartInstance = new Chart(ctxPie, {
-                type: 'pie', 
-                data: {
-                    labels: allChartData.category.labels,
-                    datasets: [{
-                        label: 'พื้นที่ไร่รวม',
-                        data: allChartData.category.data,
-                        backgroundColor: allChartData.category.labels.map((_, i) => backgroundColors[i % backgroundColors.length]), 
-                        borderColor: '#ffffff',
-                        borderWidth: 2,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'right', labels: { font: { family: 'Inter', size: 14 } } },
-                        title: {
-                            display: true,
-                            text: `พื้นที่ไร่รวม: ${formattedTotal} ไร่ (แบ่งตามประเภทพืช)`,
-                            font: { family: 'Inter', size: 16, weight: 'bold' }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const total = grandTotalRai; // Use pre-calculated total
-                                    const value = context.parsed;
-                                    const percentage = ((value / total) * 100).toFixed(2) + '%';
-                                    
-                                    // Display label: Type: Area (Percentage)
-                                    return `${context.label}: ${formatNumberForDisplay(value)} ไร่ (${percentage})`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-            // --- 2. BAR CHART RENDERING ---
-            const ctxBar = document.getElementById('cumulativeAreaBarChart').getContext('2d');
-            barChartInstance = new Chart(ctxBar, {
-                type: 'bar', // Set type to bar
-                data: {
-                    labels: allChartData.category.labels,
-                    datasets: [{
-                        label: 'พื้นที่ไร่รวม',
-                        data: allChartData.category.data,
-                        backgroundColor: allChartData.category.labels.map((_, i) => backgroundColors[i % backgroundColors.length]), 
-                        borderColor: backgroundColors.map((color) => color),
-                        borderWidth: 1,
-                        borderRadius: 5, // Nice rounded bars
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }, // Hide legend as categories are on the x-axis
-                        title: {
-                            display: true,
-                            text: `เปรียบเทียบพื้นที่ไร่รวมตามประเภทพืช`,
-                            font: { family: 'Inter', size: 16, weight: 'bold' }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const value = context.parsed.y;
-                                    return `${context.label}: ${formatNumberForDisplay(value)} ไร่`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'พื้นที่ไร่ (ไร่)',
-                                font: { family: 'Inter', weight: 'bold' }
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return formatNumberForDisplay(value); // Format ticks on Y-axis
-                                }
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'ประเภทพืช',
-                                font: { family: 'Inter', weight: 'bold' }
-                            }
-                        }
-                    }
-                }
-            });
-            
-            // --- 3. LINE CHART RENDERING (NEW) ---
-            const ctxLine = document.getElementById('cumulativeAreaLineChart').getContext('2d');
-            lineChartInstance = new Chart(ctxLine, {
-                type: 'line', 
-                data: {
-                    labels: allChartData.timeSeries.labels,
-                    datasets: [{
-                        label: 'พื้นที่ไร่สะสม',
-                        data: allChartData.timeSeries.data,
-                        backgroundColor: 'rgba(16, 185, 129, 0.5)', // Emerald-500 with opacity
-                        borderColor: '#059669', // Emerald-600
-                        borderWidth: 3,
-                        tension: 0.4, // Smooth line
-                        fill: true, // Fill area under the line
-                        pointRadius: 4,
-                        pointBackgroundColor: '#059669'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        title: {
-                            display: true,
-                            text: `พื้นที่ไร่รวมสะสมตามวันที่บันทึก (ไร่)`,
-                            font: { family: 'Inter', size: 16, weight: 'bold' }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const value = context.parsed.y;
-                                    return `พื้นที่สะสม: ${formatNumberForDisplay(value)} ไร่`;
-                                },
-                                title: function(context) {
-                                    return `วันที่: ${context[0].label}`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'พื้นที่ไร่สะสม (ไร่)',
-                                font: { family: 'Inter', weight: 'bold' }
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return formatNumberForDisplay(value);
-                                }
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'วันที่',
-                                font: { family: 'Inter', weight: 'bold' }
-                            },
-                            ticks: {
-                                autoSkip: true,
-                                maxTicksLimit: 10 
-                            }
-                        }
-                    }
-                }
-            });
-
-
-            chartLoadingDiv.classList.add('hidden'); // Hide loading overlay after charts are rendered
-        }
-
-        /** Fetches data and renders the charts (for Tab 2). */
-        async function fetchDataAndRenderChart() {
-            const chartLoadingDiv = document.getElementById('chart_loading');
-            chartLoadingDiv.classList.remove('hidden');
-            chartLoadingDiv.innerHTML = `<div class="text-center text-gray-500">
-                <svg class="animate-spin h-8 w-8 text-emerald-500 inline-block mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                กำลังโหลดข้อมูลกราฟ...
-            </div>`;
-            
-            // Destroy existing instances to ensure fresh render
-            if (pieChartInstance) { pieChartInstance.destroy(); pieChartInstance = null; }
-            if (barChartInstance) { barChartInstance.destroy(); barChartInstance = null; }
-            if (lineChartInstance) { lineChartInstance.destroy(); lineChartInstance = null; }
-            
-            const dataResult = await fetchAllData();
-            
-            if (dataResult && dataResult.data.length > 0) {
-                // Use the new combined preparation function
-                const allChartData = prepareAllChartData(dataResult.data);
+            /**
+             * Populates the year selector dropdown based on existing record dates.
+             */
+            const populateYearSelector = () => {
+                yearSelector.innerHTML = '';
                 
-                if (allChartData.category.data.length > 0 || allChartData.timeSeries.data.length > 0) {
-                    renderCharts(allChartData); 
-                    showStatus('✅ โหลดข้อมูลกราฟสรุปสำเร็จ', 'success');
+                const years = new Set();
+                const nowYear = new Date().getFullYear();
+
+                if (records.length === 0) {
+                    years.add(nowYear);
                 } else {
-                    chartLoadingDiv.innerHTML = '<p class="text-gray-500">ไม่มีข้อมูลพื้นที่ไร่ที่บันทึกไว้สำหรับแสดงกราฟสรุป (โปรดตรวจสอบว่ามีค่าพื้นที่ไร่ที่เป็นตัวเลขและมีประเภทพืชหรือไม่)</p>';
-                    chartLoadingDiv.classList.remove('hidden');
-                }
-            } else {
-                 chartLoadingDiv.innerHTML = '<p class="text-gray-500">ไม่สามารถโหลดข้อมูลได้ หรือไม่มีข้อมูลพื้นที่ไร่ที่บันทึกไว้</p>';
-                 chartLoadingDiv.classList.remove('hidden');
-            }
-        }
-
-        // --- Main Initialization (Unchanged) ---
-        document.addEventListener('DOMContentLoaded', () => {
-            const form = document.getElementById('dataForm');
-            const submitButton = document.getElementById('submitButton');
-            const clearButton = document.getElementById('clearButton');
-            
-            // Get all tab content and button elements (re-indexed)
-            const tabs = {
-                'tab1': document.getElementById('tab1-content'),
-                'tab2': document.getElementById('tab2-content'),
-                'tab3': document.getElementById('tab3-content'),
-                'tab4': document.getElementById('tab4-content'),
-            };
-            const tabButtons = {
-                'tab1': document.getElementById('tab1-button'),
-                'tab2': document.getElementById('tab2-button'),
-                'tab3': document.getElementById('tab3-button'),
-                'tab4': document.getElementById('tab4-button'),
-            };
-            
-            // --- Tab Switching Logic ---
-            function switchTab(tabId) {
-                // Update buttons
-                Object.values(tabButtons).forEach(btn => btn.classList.remove('active'));
-                tabButtons[tabId].classList.add('active');
-                
-                // Update content visibility
-                Object.values(tabs).forEach(content => content.classList.add('hidden'));
-                tabs[tabId].classList.remove('hidden');
-
-                if (tabId === 'tab2') {
-                    // Load and render chart when Tab 2 is active
-                    fetchDataAndRenderChart();
-                } else if (tabId === 'tab3') {
-                    // Load and render table when Tab 3 is active
-                    fetchDataAndRenderTable();
-                } else {
-                    showStatus('', 'none'); // Clear status when switching back to form/map
-                }
-                
-                // Cancel editing if switching away from the data table (Tab 3)
-                if (tabId !== 'tab3' && isEditing) {
-                    cancelEdit(document.getElementById(`row-${isEditing}`));
-                }
-            }
-
-            // Assign event listeners
-            tabButtons['tab1'].addEventListener('click', () => switchTab('tab1'));
-            tabButtons['tab2'].addEventListener('click', () => switchTab('tab2'));
-            tabButtons['tab3'].addEventListener('click', () => switchTab('tab3'));
-            tabButtons['tab4'].addEventListener('click', () => switchTab('tab4'));
-
-            // --- Form Submission Logic (Tab 1) ---
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
-                submitButton.disabled = true;
-                showStatus('กำลังส่งข้อมูล... กรุณารอสักครู่', 'loading');
-
-                document.getElementById('timestamp').value = new Date().toLocaleString("th-TH");
-                
-                const rawFormData = new FormData(form);
-                const submissionData = new URLSearchParams();
-
-                for (const [key, value] of rawFormData.entries()) {
-                    if (key === 'number_of_plots' || key === 'area_rai') {
-                        submissionData.append(key, cleanupValue(value));
-                    } else {
-                        submissionData.append(key, value);
-                    }
-                }
-                
-                try {
-                    await fetchWithRetry(SCRIPT_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: submissionData.toString()
+                    records.forEach(record => {
+                        const date = new Date(record.Date);
+                        if (!isNaN(date)) {
+                            years.add(date.getFullYear());
+                        }
                     });
+                    // Ensure the current year is included if no records exist for it yet
+                    years.add(nowYear);
+                }
 
-                    // Success - Reset form and re-enable button
-                    showStatus('✅ บันทึกข้อมูลสำเร็จ! ท่านสามารถบันทึกข้อมูลใหม่ได้ทันที', 'success');
-                    form.reset();
-                    submitButton.disabled = false;
+                // Convert Set to Array, sort descending (newest year first)
+                const sortedYears = Array.from(years).sort((a, b) => b - a);
+                
+                sortedYears.forEach(year => {
+                    const option = document.createElement('option');
+                    option.value = year.toString();
+                    option.textContent = `ปี ${year}`;
+                    yearSelector.appendChild(option);
+                });
+
+                // Set the initial selected year and update state
+                selectedYear = sortedYears[0] ? sortedYears[0].toString() : nowYear.toString();
+                yearSelector.value = selectedYear;
+            };
+
+
+            // --- 5. SUMMARY LOGIC ---
+
+            /**
+             * Filters records based on the selected time period.
+             */
+            const filterRecords = (period, monthYear = '', year = '') => {
+                const now = new Date();
+                return records.filter(record => {
+                    const recordDate = new Date(record.Date);
                     
-                    // Destroy chart instances to force a full re-render on tab switch next time
-                    if (pieChartInstance) { pieChartInstance.destroy(); pieChartInstance = null; }
-                    if (barChartInstance) { barChartInstance.destroy(); barChartInstance = null; }
-                    if (lineChartInstance) { lineChartInstance.destroy(); lineChartInstance = null; } // New
+                    if (period === 'daily') {
+                        return recordDate.toDateString() === now.toDateString();
+                    }
                     
-                } catch (error) {
-                    console.error('Error submitting data:', error);
-                    showStatus(`❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล: ${error.message}. กรุณาลองใหม่อีกครั้ง`, 'error');
-                    submitButton.disabled = false;
+                    if (period === 'weekly') {
+                        const day = now.getDay(); // 0 is Sunday, 1 is Monday
+                        const diff = now.getDate() - day + (day === 0 ? -6 : 1); 
+                        
+                        const startOfWeek = new Date(now.getFullYear(), now.getMonth(), diff);
+                        startOfWeek.setHours(0, 0, 0, 0);
+                        
+                        const endOfWeek = new Date(startOfWeek);
+                        endOfWeek.setDate(startOfWeek.getDate() + 7);
+
+                        return recordDate >= startOfWeek && recordDate < endOfWeek;
+                    }
+                    
+                    if (period === 'monthly') {
+                        // Use the passed monthYear (e.g., '2023-11')
+                        if (!monthYear) {
+                            monthYear = now.getFullYear() + '-' + (now.getMonth() + 1).toString().padStart(2, '0');
+                        }
+                        const [targetYear, targetMonth] = monthYear.split('-').map(Number);
+                        const jsMonth = targetMonth - 1; // JS month is 0-11
+
+                        return recordDate.getFullYear() === targetYear && recordDate.getMonth() === jsMonth;
+                    }
+                    
+                    if (period === 'yearly') {
+                        const targetYear = year ? parseInt(year) : now.getFullYear();
+                        return recordDate.getFullYear() === targetYear;
+                    }
+                    
+                    return true;
+                });
+            };
+
+            /**
+             * Formats the period title text based on the filter.
+             */
+            const updateSummaryTitle = (period, monthYear = '', year = '') => {
+                const now = new Date();
+                let titleText = '';
+                const optionsDate = { month: 'long', day: 'numeric', year: 'numeric' };
+                const optionsMonth = { month: 'long', year: 'numeric' };
+
+                if (period === 'daily') {
+                    titleText = `สรุปของวันที่ ${now.toLocaleDateString('th-TH', optionsDate)}`;
+                } else if (period === 'weekly') {
+                    const today = new Date();
+                    const day = today.getDay(); 
+                    const diff = today.getDate() - day + (day === 0 ? -6 : 1); 
+                    const startOfWeek = new Date(today.getFullYear(), today.getMonth(), diff);
+                    startOfWeek.setHours(0, 0, 0, 0);
+
+                    const endOfWeek = new Date(startOfWeek);
+                    endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+                    const startStr = startOfWeek.toLocaleDateString('th-TH', { month: 'short', day: 'numeric' });
+                    const endStr = endOfWeek.toLocaleDateString('th-TH', optionsDate);
+
+                    titleText = `สรุปสัปดาห์: ${startStr} - ${endStr}`;
+
+                } else if (period === 'monthly') {
+                    if (monthYear) {
+                        const [y, m] = monthYear.split('-');
+                        const date = new Date(parseInt(y), parseInt(m) - 1, 1);
+                        titleText = `สรุปของเดือน ${date.toLocaleDateString('th-TH', optionsMonth)}`;
+                    } else {
+                        titleText = `สรุปของเดือน ${now.toLocaleDateString('th-TH', optionsMonth)}`;
+                    }
+                } else if (period === 'yearly') {
+                    const targetYear = year ? year : now.getFullYear(); 
+                    titleText = `สรุปของปี ${targetYear}`;
+                }
+                
+                summaryTitlePeriod.textContent = titleText;
+            };
+
+            
+            /**
+             * Aggregates filtered records into income and expense totals and category breakdowns.
+             * @param {Array<object>} filteredRecords 
+             * @returns {object} Aggregated data
+             */
+            const aggregateData = (filteredRecords) => {
+                let totalIncome = 0;
+                let totalExpense = 0;
+                const incomeBreakdown = {};
+                const expenseBreakdown = {};
+
+                filteredRecords.forEach(record => {
+                    const amount = parseFloat(record.Amount);
+                    const category = record.Category;
+                    
+                    if (record.Type === 'รายรับ') {
+                        totalIncome += amount;
+                        incomeBreakdown[category] = (incomeBreakdown[category] || 0) + amount;
+                    } else if (record.Type === 'รายจ่าย') {
+                        totalExpense += amount;
+                        expenseBreakdown[category] = (expenseBreakdown[category] || 0) + amount;
+                    }
+                });
+
+                return {
+                    totalIncome,
+                    totalExpense,
+                    net: totalIncome - totalExpense,
+                    incomeBreakdown,
+                    expenseBreakdown
+                };
+            };
+            
+            /**
+             * Renders or updates the Chart.js instances.
+             */
+            const renderChart = (chartId, breakdown) => {
+                const ctx = document.getElementById(chartId).getContext('2d');
+                
+                const labels = Object.keys(breakdown).filter(key => breakdown[key] > 0);
+                const data = labels.map(key => breakdown[key]);
+                const backgroundColors = labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
+
+                if (allCharts[chartId]) {
+                    allCharts[chartId].destroy();
+                }
+
+                allCharts[chartId] = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: backgroundColors,
+                            hoverOffset: 4,
+                            borderWidth: 1,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        aspectRatio: 1,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: {
+                                    padding: 10,
+                                    usePointStyle: true,
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        label += formatCurrency(context.parsed);
+                                        return label;
+                                    }
+                                }
+                            },
+                            datalabels: {
+                                color: '#fff',
+                                textShadowColor: 'rgba(0,0,0,0.5)',
+                                textShadowBlur: 4,
+                                formatter: (value, context) => {
+                                    const sum = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    if (sum === 0) return '';
+                                    const percentage = (value * 100 / sum).toFixed(1) + "%";
+                                    return percentage;
+                                }
+                            }
+                        }
+                    }
+                });
+            };
+            
+            /**
+             * Main function to update all summary components based on the active period.
+             * @param {string} period - 'daily', 'weekly', 'monthly', 'yearly'
+             * @param {string} [monthYear] - Optional 'YYYY-MM' string for monthly filter
+             * @param {string} [year] - Optional 'YYYY' string for yearly filter
+             */
+            const updateSummary = (period, monthYear = '', year = '') => {
+                const filtered = filterRecords(period, monthYear, year);
+                const aggregated = aggregateData(filtered);
+                
+                // 1. Update Title with period context
+                updateSummaryTitle(period, monthYear, year);
+
+                // 2. Update Summary Cards (Summary View)
+                document.getElementById('summary-income').textContent = formatCurrency(aggregated.totalIncome);
+                document.getElementById('summary-expense').textContent = formatCurrency(aggregated.totalExpense);
+                
+                const netElement = document.getElementById('summary-net');
+                netElement.textContent = formatCurrency(Math.abs(aggregated.net));
+                netElement.classList.remove('text-blue-600', 'text-red-600', 'text-emerald-600');
+                if (aggregated.net > 0) {
+                    netElement.classList.add('text-emerald-600');
+                } else if (aggregated.net < 0) {
+                    netElement.classList.add('text-red-600');
+                } else {
+                    netElement.classList.add('text-blue-600');
+                }
+                
+                // 3. Update Charts
+                renderChart('income-chart', aggregated.incomeBreakdown);
+                renderChart('expense-chart', aggregated.expenseBreakdown);
+            };
+            
+            // Helper to get parameters and call updateSummary based on current state
+            const updateAllSummaries = () => {
+                let monthYear = '';
+                let year = ''; 
+                
+                if (currentPeriod === 'monthly') {
+                    monthYear = monthSelector.value || selectedMonthYear; 
+                } else if (currentPeriod === 'yearly') {
+                    year = yearSelector.value || selectedYear;
+                }
+                updateSummary(currentPeriod, monthYear, year);
+            }
+
+            // Event listener for summary tabs
+            document.querySelectorAll('.time-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // 1. Update active class
+                    document.querySelectorAll('.time-tab').forEach(t => t.classList.remove('active-tab'));
+                    this.classList.add('active-tab');
+                    
+                    currentPeriod = this.dataset.period; // Update global state
+                    
+                    // Hide both selectors first
+                    monthSelectorContainer.classList.add('hidden'); 
+                    yearSelectorContainer.classList.add('hidden'); 
+
+                    let updateYear = '';
+                    let updateMonthYear = '';
+
+                    // 2. Handle Selector Visibility and initial update
+                    if (currentPeriod === 'monthly') {
+                        monthSelectorContainer.classList.remove('hidden');
+                        updateMonthYear = monthSelector.value;
+                    } else if (currentPeriod === 'yearly') {
+                        yearSelectorContainer.classList.remove('hidden');
+                        updateYear = yearSelector.value;
+                    }
+                    
+                    updateSummary(currentPeriod, updateMonthYear, updateYear);
+                });
+            });
+
+            // Event listener for the month selector (Triggers when month is changed)
+            monthSelector.addEventListener('change', function() {
+                selectedMonthYear = this.value; // Update global state
+                if (currentPeriod === 'monthly') {
+                    updateSummary('monthly', selectedMonthYear);
                 }
             });
             
-            // --- Clear Button Logic ---
-            clearButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                form.reset();
-                showStatus('ฟอร์มถูกเคลียร์แล้ว', 'loading');
-                submitButton.disabled = false;
-            });
-
-            // --- Table Action Listeners (Tab 3) ---
-            document.getElementById('data_table_container').addEventListener('click', (e) => {
-                const row = e.target.closest('tr[data-row-index]');
-                if (!row) return;
-
-                if (e.target.classList.contains('edit-btn')) {
-                    startEdit(row);
-                } else if (e.target.classList.contains('save-btn')) {
-                    saveEdit(row);
-                } else if (e.target.classList.contains('cancel-btn')) {
-                    cancelEdit(row);
+            // Event listener for the year selector (Triggers when year is changed)
+            yearSelector.addEventListener('change', function() {
+                selectedYear = this.value; // Update global state
+                if (currentPeriod === 'yearly') {
+                    // Pass selectedYear, monthYear remains empty
+                    updateSummary('yearly', '', selectedYear); 
                 }
             });
             
-            // Initialize: Load tab 1 content by default
-            switchTab('tab1');
+            // --- 6. DASHBOARD LOGIC ---
+            
+            /**
+             * Aggregates records by month for the monthly trend chart.
+             */
+            const calculateMonthlyTrends = () => {
+                const monthlyData = {};
+                
+                records.forEach(record => {
+                    const date = new Date(record.Date);
+                    // Format key as YYYY-MM
+                    const yearMonth = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+                    const amount = parseFloat(record.Amount);
+
+                    if (!monthlyData[yearMonth]) {
+                        monthlyData[yearMonth] = { income: 0, expense: 0, date: date };
+                    }
+
+                    if (record.Type === 'รายรับ') {
+                        monthlyData[yearMonth].income += amount;
+                    } else if (record.Type === 'รายจ่าย') {
+                        monthlyData[yearMonth].expense += amount;
+                    }
+                });
+
+                // Convert to array and sort by date
+                let sortedMonths = Object.keys(monthlyData)
+                    .map(key => ({ 
+                        key: key, 
+                        income: monthlyData[key].income, 
+                        expense: monthlyData[key].expense,
+                        net: monthlyData[key].income - monthlyData[key].expense,
+                        date: monthlyData[key].date
+                    }))
+                    .sort((a, b) => a.date.getTime() - b.date.getTime());
+                
+                // Limit to the last 12 months
+                sortedMonths = sortedMonths.slice(-12);
+                
+                return sortedMonths;
+            };
+
+            /**
+             * Renders the Monthly Trend Chart (Bar Chart).
+             */
+            const renderMonthlyTrendChart = (monthlyData) => {
+                const chartId = 'monthly-trend-chart';
+                const ctx = document.getElementById(chartId).getContext('2d');
+                
+                if (allCharts[chartId]) {
+                    allCharts[chartId].destroy();
+                }
+
+                const labels = monthlyData.map(d => 
+                    d.date.toLocaleString('th-TH', { year: '2-digit', month: 'short' })
+                );
+                
+                const incomeData = monthlyData.map(d => d.income);
+                const expenseData = monthlyData.map(d => d.expense);
+                const netData = monthlyData.map(d => d.net);
+
+                allCharts[chartId] = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'รายรับ (Income)',
+                                data: incomeData,
+                                backgroundColor: PRIMARY_COLOR,
+                            },
+                            {
+                                label: 'รายจ่าย (Expense)',
+                                data: expenseData,
+                                backgroundColor: SECONDARY_COLOR,
+                            },
+                            {
+                                type: 'line',
+                                label: 'คงเหลือสุทธิ (Net)',
+                                data: netData,
+                                borderColor: '#3b82f6', // Blue for Net
+                                borderWidth: 3,
+                                fill: false,
+                                yAxisID: 'y1', // Use the second Y-axis
+                                pointRadius: 5,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        aspectRatio: 2,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: { display: true, text: 'รายรับ/รายจ่าย (บาท)' },
+                                ticks: { callback: (value) => value.toLocaleString() },
+                                position: 'left',
+                            },
+                            y1: {
+                                beginAtZero: true,
+                                title: { display: true, text: 'คงเหลือสุทธิ (บาท)' },
+                                ticks: { callback: (value) => value.toLocaleString() },
+                                position: 'right',
+                                grid: { drawOnChartArea: false }, // Only draw grid lines for the main Y-axis
+                            }
+                        },
+                        plugins: {
+                            legend: { position: 'top' },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        label += formatCurrency(context.parsed.y);
+                                        return label;
+                                    }
+                                }
+                            },
+                            datalabels: { display: false } // Disable datalabels for clarity on trend chart
+                        }
+                    }
+                });
+            };
+            
+            /**
+             * Renders the top 5 income/expense categories.
+             */
+            const renderTopCategories = (breakdown, listElement, type) => {
+                listElement.innerHTML = '';
+                
+                // Convert breakdown object to array and sort
+                const sortedCategories = Object.entries(breakdown)
+                    .map(([category, amount]) => ({ category, amount }))
+                    .sort((a, b) => b.amount - a.amount)
+                    .slice(0, 5);
+                
+                if (sortedCategories.length === 0) {
+                    listElement.innerHTML = `<li class="text-gray-500">ไม่มีข้อมูล ${type === 'income' ? 'รายรับ' : 'รายจ่าย'}</li>`;
+                    return;
+                }
+                
+                const total = sortedCategories.reduce((sum, item) => sum + item.amount, 0);
+                const color = type === 'income' ? 'bg-emerald-100' : 'bg-red-100';
+                const textColor = type === 'income' ? 'text-emerald-700' : 'text-red-700';
+
+                sortedCategories.forEach((item, index) => {
+                    const percentage = total > 0 ? ((item.amount / total) * 100).toFixed(1) : 0;
+                    const width = percentage > 0 ? percentage : 0.5; // Minimum bar width
+
+                    const listItem = document.createElement('li');
+                    listItem.className = 'py-2 border-b border-gray-100';
+                    listItem.innerHTML = `
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm font-medium text-gray-700">${index + 1}. ${item.category}</span>
+                            <span class="text-sm font-bold ${textColor}">${formatCurrency(item.amount)}</span>
+                        </div>
+                        <div class="w-full ${color} rounded-full h-2.5">
+                            <div class="${color.replace('-100', '-500')} h-2.5 rounded-full" style="width: ${width}%;"></div>
+                        </div>
+                    `;
+                    listElement.appendChild(listItem);
+                });
+            };
+
+            /**
+             * Main function to update the Dashboard view.
+             */
+            const updateDashboard = () => {
+                if (records.length === 0) {
+                    // Reset dashboard if no records
+                    dashboardTotalIncome.textContent = formatCurrency(0);
+                    dashboardTotalExpense.textContent = formatCurrency(0);
+                    dashboardNetBalance.textContent = formatCurrency(0);
+                    if(allCharts['monthly-trend-chart']) allCharts['monthly-trend-chart'].destroy();
+                    topIncomeList.innerHTML = `<li class="text-gray-500">ไม่มีข้อมูล</li>`;
+                    topExpenseList.innerHTML = `<li class="text-gray-500">ไม่มีข้อมูล</li>`;
+                    return;
+                }
+                
+                // 1. All-Time Totals
+                const aggregatedAllTime = aggregateData(records);
+                dashboardTotalIncome.textContent = formatCurrency(aggregatedAllTime.totalIncome);
+                dashboardTotalExpense.textContent = formatCurrency(aggregatedAllTime.totalExpense);
+                
+                dashboardNetBalance.textContent = formatCurrency(Math.abs(aggregatedAllTime.net));
+                dashboardNetBalance.classList.remove('text-blue-700', 'text-red-700', 'text-emerald-700');
+                if (aggregatedAllTime.net > 0) {
+                    dashboardNetBalance.classList.add('text-emerald-700');
+                } else if (aggregatedAllTime.net < 0) {
+                    dashboardNetBalance.classList.add('text-red-700');
+                } else {
+                    dashboardNetBalance.classList.add('text-blue-700');
+                }
+                
+                // 2. Monthly Trend Chart
+                const monthlyTrends = calculateMonthlyTrends();
+                renderMonthlyTrendChart(monthlyTrends);
+                
+                // 3. Top Categories
+                renderTopCategories(aggregatedAllTime.incomeBreakdown, topIncomeList, 'income');
+                renderTopCategories(aggregatedAllTime.expenseBreakdown, topExpenseList, 'expense');
+            };
+            
+            // --- 7. INITIALIZATION ---
+
+            // Show the default view on load (Summary)
+            showView('summary');
+
         });
     </script>
 </body>
