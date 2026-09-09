@@ -1,663 +1,1818 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>บันทึกรายรับ-รายจ่ายทริปท่องเที่ยว</title>
     
-    <title>Remember Map</title>
+    <!-- Google Fonts: Prompt & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- CSS Resources -->
-    <link rel="stylesheet" href="./resources/ol.css">
-    <link rel="stylesheet" href="./resources/fontawesome-all.min.css">
-    <link href="./resources/photon-geocoder-autocomplete.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="./resources/ol-layerswitcher.css">
-    <link rel="stylesheet" href="./resources/qgis2web.css">
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Leaflet CSS & JS for Interactive Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            /* Theme Color Palette - Soft Pastel & Modern Accents */
+            --bg-app: #F4F7F6;
+            --surface-card: #FFFFFF;
+            --text-primary: #2C3E50;
+            --text-secondary: #7F8C8D;
+            --text-muted: #BDC3C7;
+            
+            --primary: #2EC4B6;
+            --primary-light: #E6F8F6;
+            --primary-dark: #20968B;
+            
+            --accent-mint: #A8E6CF;
+            --accent-blue: #A8DADC;
+            --accent-cream: #FFF3E0;
+            --accent-purple: #E2D4F8;
+            
+            --income: #27AE60;
+            --income-bg: #E8F8F5;
+            --expense: #FF6B6B;
+            --expense-bg: #FFEAEB;
+            
+            --warning-yellow: #FFB703;
+            --warning-bg: #FFF9E6;
+            --danger-red: #EE5253;
+            --danger-bg: #FFEEEE;
+            
+            --border-color: #E2E8F0;
+            --shadow-soft: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+            --shadow-card: 0 4px 15px rgba(0, 0, 0, 0.04);
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --radius-full: 9999px;
+            
+            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        html, body, #map {
-            width: 100%;
-            height: 100%;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Prompt', 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            background-color: #ffffff;
-        }
-
-        #map {
-            position: relative;
-        }
-
-        /* Popup Styling */
-        .ol-popup {
-            position: absolute;
-            background-color: white;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #cccccc;
-            bottom: 12px;
-            left: -50px;
-            min-width: 280px;
-            max-width: 400px;
-            z-index: 100;
-        }
-
-        .ol-popup:after, .ol-popup:before {
-            top: 100%;
-            border: solid transparent;
-            content: " ";
-            height: 0;
-            width: 0;
-            position: absolute;
-            pointer-events: none;
-        }
-
-        .ol-popup:after {
-            border-top-color: white;
-            border-width: 10px;
-            left: 48px;
-            margin-left: -10px;
-        }
-
-        .ol-popup:before {
-            border-top-color: #cccccc;
-            border-width: 11px;
-            left: 48px;
-            margin-left: -11px;
-        }
-
-        .ol-popup-closer {
-            text-decoration: none;
-            position: absolute;
-            top: 2px;
-            right: 8px;
-            cursor: pointer;
-            color: #999;
-            font-size: 20px;
-            font-weight: bold;
-        }
-
-        .ol-popup-closer:hover {
-            color: #000;
-        }
-
-        #popup-content {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        #popup-content table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-
-        #popup-content th, #popup-content td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-
-        #popup-content th {
-            background-color: #f5f5f5;
-            font-weight: bold;
-        }
-
-        #popup-content img, #popup-content video, #popup-content audio {
-            max-width: 100%;
-            margin-top: 10px;
-            border-radius: 4px;
-        }
-
-        /* Control Styling */
-        .ol-control > * {
-            background-color: #f8f8f8 !important;
-            color: #444444 !important;
-            border-radius: 4px;
-            transition: all 0.2s ease;
-        }
-
-        .ol-control > *:hover, .ol-control > *:focus {
-            background-color: rgba(248, 248, 248, 0.9) !important;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        }
-
-        .ol-control {
-            background-color: rgba(255, 255, 255, 0.8) !important;
-            padding: 3px !important;
-            border-radius: 4px;
-        }
-
-        .ol-attribution a, .gcd-gl-input::placeholder, .search-layer-input-search::placeholder {
-            color: #444444 !important;
-        }
-
-        .search-layer-input-search {
-            background-color: #f8f8f8 !important;
-        }
-
-        /* Tooltip Styling */
-        .tooltip {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            pointer-events: none;
-            z-index: 1000;
-            white-space: nowrap;
-        }
-
-        .tooltip.hidden {
-            display: none;
-        }
-
-        .tooltip-static {
-            background: rgba(0, 0, 0, 0.8);
-        }
-
-        .tooltip-measure {
-            background: rgba(0, 0, 0, 0.8);
-            font-weight: bold;
+            background-color: var(--bg-app);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 80px; /* Space for mobile nav */
         }
 
         /* Container Layout */
-        #top-left-container, #top-right-container, 
-        #bottom-left-container, #bottom-right-container {
+        .app-container {
+            max-width: 1024px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 20px 16px;
+        }
+
+        /* Header Styling */
+        header {
+            background: var(--surface-card);
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        }
+
+        .header-content {
+            max-width: 1024px;
+            margin: 0 auto;
             display: flex;
-            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--primary), var(--accent-blue));
+            color: white;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 10px rgba(46, 196, 182, 0.3);
+        }
+
+        .logo-title h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .logo-title span {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        /* Desktop Nav Header Tabs */
+        .desktop-nav {
+            display: none;
             gap: 8px;
         }
 
-        #top-left-container {
-            top: 12px;
-            left: 12px;
+        .nav-btn {
+            padding: 8px 16px;
+            border-radius: var(--radius-full);
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.95rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: var(--transition);
         }
 
-        #top-right-container {
-            top: 12px;
-            right: 12px;
+        .nav-btn:hover {
+            background: var(--primary-light);
+            color: var(--primary-dark);
         }
 
-        #bottom-left-container {
-            bottom: 12px;
-            left: 12px;
+        .nav-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(46, 196, 182, 0.3);
         }
 
-        #bottom-right-container {
-            bottom: 12px;
-            right: 12px;
+        .card {
+            background: var(--surface-card);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            box-shadow: var(--shadow-card);
+            border: 1px solid rgba(226, 232, 240, 0.7);
+            margin-bottom: 20px;
+            transition: var(--transition);
         }
 
-        /* Loading Animation */
-        .roller-switcher {
-            display: inline-block;
+        .card:hover {
+            box-shadow: var(--shadow-soft);
+        }
+
+        /* Trip Banner Card */
+        .trip-banner {
+            background: linear-gradient(135deg, #E6F8F6 0%, #E2D4F8 100%);
+            border: none;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .trip-info h2 {
+            font-size: 1.4rem;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .trip-info p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-outline {
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            padding: 8px 16px;
+            border-radius: var(--radius-full);
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-outline:hover {
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        /* Summary Cards Grid */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--surface-card);
+            padding: 18px 20px;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-card);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+
+        .stat-icon.budget { background: var(--accent-cream); color: var(--warning-yellow); }
+        .stat-icon.income { background: var(--income-bg); color: var(--income); }
+        .stat-icon.expense { background: var(--expense-bg); color: var(--expense); }
+        .stat-icon.balance { background: var(--primary-light); color: var(--primary-dark); }
+
+        .stat-details span {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .stat-details h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Budget Progress Component */
+        .progress-box {
+            margin-top: 10px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+
+        .progress-bar-bg {
+            height: 12px;
+            background: #EDF2F7;
+            border-radius: var(--radius-full);
+            overflow: hidden;
             position: relative;
         }
 
-        .roller-switcher div {
-            animation: roller-switcher 1.2s cubic-bezier(0, 0.5, 0.5, 1) infinite;
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: var(--radius-full);
+            transition: width 0.6s ease, background-color 0.3s ease;
+            width: 0%;
         }
 
-        .roller-switcher div:nth-child(1) {
-            animation-delay: -0.24s;
+        /* Charts Container */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
         }
 
-        .roller-switcher div:nth-child(2) {
-            animation-delay: -0.12s;
+        .chart-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
-        @keyframes roller-switcher {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
+        .chart-header {
+            width: 100%;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .ol-popup {
-                min-width: 200px;
-                max-width: 90vw;
-            }
+        .chart-header h3 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
 
-            #popup-content {
-                font-size: 12px;
-            }
+        .chart-wrapper {
+            position: relative;
+            width: 100%;
+            height: 240px;
+        }
 
-            #top-left-container, #top-right-container,
-            #bottom-left-container, #bottom-right-container {
-                gap: 4px;
+        /* Primary Action Button */
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: var(--radius-full);
+            font-weight: 500;
+            font-size: 0.95rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(46, 196, 182, 0.35);
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #EDF2F7;
+            color: var(--text-primary);
+            border: none;
+            padding: 10px 20px;
+            border-radius: var(--radius-full);
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-secondary:hover {
+            background: #E2E8F0;
+        }
+
+        .btn-danger {
+            background: var(--danger-red);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: var(--radius-full);
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-danger:hover {
+            background: #D63031;
+        }
+
+        /* Transaction Item Row */
+        .transaction-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .transaction-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            background: var(--surface-card);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .transaction-item:hover {
+            border-color: var(--primary);
+            transform: translateX(2px);
+        }
+
+        .tx-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .tx-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .tx-info h4 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .tx-info p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tx-right {
+            text-align: right;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .tx-amount {
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .tx-amount.income { color: var(--income); }
+        .tx-amount.expense { color: var(--expense); }
+
+        .tx-actions {
+            display: flex;
+            gap: 6px;
+            opacity: 0.8;
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .icon-btn:hover {
+            background: #EDF2F7;
+            color: var(--text-primary);
+        }
+
+        .icon-btn.delete:hover {
+            background: var(--danger-bg);
+            color: var(--danger-red);
+        }
+
+        /* Filters Bar */
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .form-control {
+            padding: 9px 14px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            background: var(--surface-card);
+            font-size: 0.9rem;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(46, 196, 182, 0.15);
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 180px;
+        }
+
+        /* Bottom Navigation Bar for Mobile */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--surface-card);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            z-index: 90;
+            box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.72rem;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 4px 12px;
+            border-radius: var(--radius-md);
+            transition: var(--transition);
+        }
+
+        .bottom-nav-item i {
+            font-size: 1.2rem;
+        }
+
+        .bottom-nav-item.active {
+            color: var(--primary-dark);
+        }
+
+        /* Modal Overlays */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: var(--surface-card);
+            width: 100%;
+            max-width: 480px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-soft);
+            overflow: hidden;
+            transform: translateY(20px);
+            transition: transform 0.25s ease;
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 1.1rem;
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            background: #FAFDFC;
+        }
+
+        /* Type Toggle Switch inside Form */
+        .type-toggle {
+            display: flex;
+            background: #EDF2F7;
+            padding: 4px;
+            border-radius: var(--radius-full);
+            margin-bottom: 16px;
+        }
+
+        .type-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            background: transparent;
+            border-radius: var(--radius-full);
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .type-btn.active.expense {
+            background: var(--expense);
+            color: white;
+            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+        }
+
+        .type-btn.active.income {
+            background: var(--income);
+            color: white;
+            box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+        }
+
+        /* Toast Message Notification */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: var(--text-primary);
+            color: white;
+            padding: 12px 20px;
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        /* Location & Map Card Styles */
+        .location-banner {
+            background: linear-gradient(135deg, #ffffff 0%, #F0EAFF 100%);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 18px;
+            margin-top: 20px;
+        }
+
+        .location-status-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .district-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #E6F8F6;
+            color: var(--primary-dark);
+            padding: 8px 16px;
+            border-radius: var(--radius-full);
+            font-weight: 600;
+            font-size: 1rem;
+            border: 1px solid rgba(46, 196, 182, 0.3);
+        }
+
+        .map-container {
+            width: 100%;
+            height: 360px;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-card);
+            z-index: 1;
+        }
+
+        /* Responsive Breakpoints */
+        @media (min-width: 768px) {
+            .desktop-nav {
+                display: flex;
+            }
+            .bottom-nav {
+                display: none;
+            }
+            body {
+                padding-bottom: 20px;
             }
         }
     </style>
 </head>
 <body>
-    <div id="map">
-        <div id="popup" class="ol-popup">
-            <a href="#" id="popup-closer" class="ol-popup-closer">&times;</a>
-            <div id="popup-content"></div>
+
+    <header>
+        <div class="header-content">
+            <div class="logo-group">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-plane-departure"></i>
+                </div>
+                <div class="logo-title">
+                    <h1>Trip Expense</h1>
+                    <span>บันทึกรายรับ-รายจ่ายท่องเที่ยว</span>
+                </div>
+            </div>
+
+            <!-- Desktop Navigation -->
+            <nav class="desktop-nav">
+                <button class="nav-btn active" onclick="switchTab('dashboard')">
+                    <i class="fa-solid fa-chart-pie"></i> สรุปภาพรวม
+                </button>
+                <button class="nav-btn" onclick="switchTab('transactions')">
+                    <i class="fa-solid fa-list-check"></i> รายการทั้งหมด
+                </button>
+                <button class="nav-btn" onclick="switchTab('settings')">
+                    <i class="fa-solid fa-sliders"></i> ตั้งค่า & จัดการ
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="app-container">
+        
+        <!-- ================= TAB 1: DASHBOARD ================= -->
+        <section id="tab-dashboard" class="tab-content">
+            <!-- Trip Overview Card -->
+            <div class="card trip-banner">
+                <div class="trip-info">
+                    <h2 id="display-trip-name">ทริปท่องเที่ยวของฉัน</h2>
+                    <p><i class="fa-regular fa-calendar-days"></i> <span id="display-trip-dates">--/--/---- - --/--/----</span></p>
+                </div>
+                <button class="btn-outline" onclick="openBudgetModal()">
+                    <i class="fa-solid fa-pen-to-square"></i> ตั้งค่างบทริป
+                </button>
+            </div>
+
+            <!-- Stat Summary Grid -->
+            <div class="summary-grid">
+                <div class="stat-card">
+                    <div class="stat-icon budget"><i class="fa-solid fa-wallet"></i></div>
+                    <div class="stat-details">
+                        <span>งบประมาณตั้งไว้</span>
+                        <h3 id="stat-budget">฿0.00</h3>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon income"><i class="fa-solid fa-arrow-down-left"></i></div>
+                    <div class="stat-details">
+                        <span>รายรับรวม</span>
+                        <h3 id="stat-income">฿0.00</h3>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon expense"><i class="fa-solid fa-arrow-up-right"></i></div>
+                    <div class="stat-details">
+                        <span>รายจ่ายรวม</span>
+                        <h3 id="stat-expense">฿0.00</h3>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon balance"><i class="fa-solid fa-piggy-bank"></i></div>
+                    <div class="stat-details">
+                        <span>ยอดคงเหลือ</span>
+                        <h3 id="stat-balance">฿0.00</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Budget Progress Card -->
+            <div class="card">
+                <div class="progress-header">
+                    <span>การใช้จ่ายเทียบกับงบประมาณ</span>
+                    <span id="progress-percent-text">0%</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div id="progress-bar-fill" class="progress-bar-fill"></div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="charts-grid">
+                <div class="card chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fa-solid fa-chart-pie" style="color:var(--primary);"></i> รายจ่ายแยกตามหมวดหมู่</h3>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="categoryDonutChart"></canvas>
+                    </div>
+                </div>
+                <div class="card chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fa-solid fa-chart-column" style="color:var(--accent-blue);"></i> รายจ่ายรายวัน</h3>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="dailyBarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Transactions Widget -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3>รายการล่าสุด</h3>
+                    <button class="btn-outline" onclick="switchTab('transactions')">ดูทั้งหมด</button>
+                </div>
+                <div id="recent-transaction-list" class="transaction-list">
+                    <!-- Dynamic rendering -->
+                </div>
+            </div>
+
+            <!-- Location & Interactive Street Map Section -->
+            <div class="card location-banner">
+                <div class="location-status-bar">
+                    <div>
+                        <span style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">
+                            <i class="fa-solid fa-location-crosshairs" style="color: var(--primary);"></i> ตำแหน่งปัจจุบันของคุณ
+                        </span>
+                        <div id="district-display" class="district-badge">
+                            <i class="fa-solid fa-map-pin"></i> <span id="district-text">กำลังระบุตำแหน่งอำเภอ...</span>
+                        </div>
+                    </div>
+                    <button class="btn-outline" onclick="getUserLocation(true)">
+                        <i class="fa-solid fa-rotate"></i> อัปเดตตำแหน่งปัจจุบัน
+                    </button>
+                </div>
+
+                <div id="location-detail-text" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">
+                    <i class="fa-solid fa-route"></i> แสดงแผนที่ตำแหน่งที่อยู่และเส้นทางสถานที่ในทริปของคุณ
+                </div>
+
+                <!-- Interactive Map Element -->
+                <div id="travel-map" class="map-container"></div>
+            </div>
+        </section>
+
+
+        <!-- ================= TAB 2: TRANSACTIONS LIST ================= -->
+        <section id="tab-transactions" class="tab-content" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                <h2>รายการบันทึกทั้งหมด</h2>
+                <button class="btn-primary" onclick="openTransactionModal()">
+                    <i class="fa-solid fa-plus"></i> เพิ่มรายการใหม่
+                </button>
+            </div>
+
+            <!-- Filter and Search controls -->
+            <div class="filter-bar">
+                <input type="text" id="search-input" class="form-control search-input" placeholder="🔍 ค้นหารายการ..." oninput="renderTransactions()">
+                
+                <select id="filter-type" class="form-control" onchange="renderTransactions()">
+                    <option value="all">ทุกประเภท</option>
+                    <option value="expense">รายจ่าย</option>
+                    <option value="income">รายรับ</option>
+                </select>
+
+                <select id="filter-category" class="form-control" onchange="renderTransactions()">
+                    <option value="all">ทุกหมวดหมู่</option>
+                    <!-- Dynamically populated or fixed options -->
+                    <option value="อาหาร">อาหาร</option>
+                    <option value="เดินทาง">เดินทาง</option>
+                    <option value="ที่พัก">ที่พัก</option>
+                    <option value="ซื้อของ">ซื้อของ</option>
+                    <option value="ที่เที่ยว">ที่เที่ยว</option>
+                    <option value="เติมเงิน">เติมเงิน</option>
+                    <option value="คืนเงิน">คืนเงิน</option>
+                    <option value="อื่นๆ">อื่นๆ</option>
+                </select>
+
+                <select id="sort-order" class="form-control" onchange="renderTransactions()">
+                    <option value="desc">วันที่ล่าสุดก่อน</option>
+                    <option value="asc">วันที่เก่าสุดก่อน</option>
+                </select>
+            </div>
+
+            <!-- Main Full Transaction List -->
+            <div id="full-transaction-list" class="transaction-list">
+                <!-- Dynamic rendering -->
+            </div>
+        </section>
+
+
+        <!-- ================= TAB 3: SETTINGS & DATA ================= -->
+        <section id="tab-settings" class="tab-content" style="display: none;">
+            <h2 style="margin-bottom: 16px;">ตั้งค่า & จัดการข้อมูล</h2>
+
+            <div class="card">
+                <h3 style="margin-bottom: 12px;"><i class="fa-solid fa-sliders"></i> ตั้งค่างบทริป</h3>
+                <form id="setting-trip-form" onsubmit="handleSaveTripSettings(event)">
+                    <div class="form-group">
+                        <label>ชื่อทริป</label>
+                        <input type="text" id="set-trip-name" class="form-control" placeholder="เช่น ทริปเชียงใหม่ 3 วัน 2 คืน" required>
+                    </div>
+                    <div class="form-group">
+                        <label>งบประมาณ (บาท)</label>
+                        <input type="number" id="set-trip-budget" class="form-control" min="0" step="100" required>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>วันเริ่มทริป</label>
+                            <input type="date" id="set-start-date" class="form-control" required>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>วันสิ้นสุดทริป</label>
+                            <input type="date" id="set-end-date" class="form-control" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary" style="margin-top: 10px;">บันทึกข้อมูลทริป</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-bottom: 12px;"><i class="fa-solid fa-database"></i> เครื่องมือจัดการข้อมูล</h3>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px;">
+                    ส่งออกข้อมูลเพื่อนำไปเปิดใน Excel หรือโหลดข้อมูลตัวอย่างเริ่มต้น
+                </p>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn-outline" onclick="exportToCSV()">
+                        <i class="fa-solid fa-file-csv" style="color: #27AE60;"></i> ส่งออกเป็น CSV
+                    </button>
+                    <button class="btn-outline" onclick="loadSampleData()">
+                        <i class="fa-solid fa-arrows-rotate" style="color: var(--primary);"></i> โหลดข้อมูลตัวอย่าง
+                    </button>
+                    <button class="btn-danger" onclick="promptClearAllData()">
+                        <i class="fa-solid fa-trash-can"></i> ล้างข้อมูลทั้งหมด
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+        <button class="bottom-nav-item active" onclick="switchTab('dashboard')">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span>สรุป</span>
+        </button>
+        <button class="bottom-nav-item" onclick="switchTab('transactions')">
+            <i class="fa-solid fa-list-check"></i>
+            <span>รายการ</span>
+        </button>
+        <button class="bottom-nav-item" onclick="openTransactionModal()">
+            <i class="fa-solid fa-circle-plus" style="font-size: 1.6rem; color: var(--primary);"></i>
+            <span>เพิ่ม</span>
+        </button>
+        <button class="bottom-nav-item" onclick="switchTab('settings')">
+            <i class="fa-solid fa-sliders"></i>
+            <span>ตั้งค่า</span>
+        </button>
+    </nav>
+
+
+    <!-- Modal: Add / Edit Transaction -->
+    <div id="transaction-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modal-tx-title">เพิ่มรายการใหม่</h3>
+                <button class="icon-btn" onclick="closeTransactionModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="transaction-form" onsubmit="handleSaveTransaction(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="tx-id">
+                    
+                    <!-- Expense / Income Toggle -->
+                    <div class="type-toggle">
+                        <button type="button" id="type-btn-expense" class="type-btn active expense" onclick="setTransactionType('expense')">รายจ่าย 💸</button>
+                        <button type="button" id="type-btn-income" class="type-btn income" onclick="setTransactionType('income')">รายรับ 💵</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label>จำนวนเงิน (บาท)</label>
+                        <input type="number" id="tx-amount" class="form-control" placeholder="0.00" step="0.01" min="0.01" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>หมวดหมู่</label>
+                        <select id="tx-category" class="form-control" required>
+                            <!-- Dynamically loaded based on Type -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>วันที่</label>
+                        <input type="date" id="tx-date" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>บันทึก / หมายเหตุ</label>
+                        <textarea id="tx-note" class="form-control" rows="2" placeholder="เช่น ค่าข้าวซอยไก่, น้ำมัน"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>สถานที่ (ไม่บังคับ)</label>
+                        <input type="text" id="tx-location" class="form-control" placeholder="เช่น ตลาดวโรรส, ร้านแม่สาย">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeTransactionModal()">ยกเลิก</button>
+                    <button type="submit" class="btn-primary">บันทึกรายการ</button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="./resources/qgis2web_expressions.js"></script>
-    <script src="./resources/proj4.js"></script>
+    <!-- Modal: Custom Confirmation -->
+    <div id="confirm-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 id="confirm-title">ยืนยันการทำรายการ</h3>
+                <button class="icon-btn" onclick="closeConfirmModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message" style="color: var(--text-secondary);">คุณต้องการดำเนินการต่อหรือไม่?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeConfirmModal()">ยกเลิก</button>
+                <button type="button" id="confirm-action-btn" class="btn-danger">ตกลง</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
     <script>
-        proj4.defs('EPSG:4326', '+proj=longlat +datum=WGS84 +no_defs');
-    </script>
-    <script src="./resources/functions.js"></script>
-    <script src="./resources/ol.js"></script>
-    <script src="./resources/ol-layerswitcher.js"></script>
-    <script src="./resources/photon-geocoder-autocomplete.min.js"></script>
-    <script src="./resources/olms.js"></script>
-    <script src="./layers/_1.js"></script>
-    <script src="./layers/RSC_2.js"></script>
-    <script src="./styles/_1_style.js"></script>
-    <script src="./styles/RSC_2_style.js"></script>
-    <script src="./layers/layers.js" type="text/javascript"></script>
-    <script src="./resources/Autolinker.min.js"></script>
-
-    <script>
-        // ========================================
-        // MAP INITIALIZATION
-        // ========================================
-        var map = new ol.Map({
-            target: 'map',
-            renderer: 'canvas',
-            layers: layersList,
-            view: new ol.View({
-                constrainResolution: true,
-                maxZoom: 28,
-                minZoom: 1,
-                extent: [97.354107, 12.813512, 108.281768, 18.968284],
-                projection: new ol.proj.Projection({
-                    code: 'EPSG:4326',
-                    units: 'degrees'
-                })
-            })
-        });
-
-        // Initial view
-        map.getView().fit([97.354107, 12.813512, 108.281768, 18.968284], map.getSize());
-
-        // ========================================
-        // CURSOR MANAGEMENT
-        // ========================================
-        function pointerOnFeature(evt) {
-            if (evt.dragging) {
-                return;
-            }
-            var hasFeature = map.hasFeatureAtPixel(evt.pixel, {
-                layerFilter: function(layer) {
-                    return layer && (layer.get("interactive"));
-                }
-            });
-            map.getViewport().style.cursor = hasFeature ? "pointer" : "";
-        }
-
-        map.on('pointermove', pointerOnFeature);
-
-        function styleCursorMove() {
-            map.on('pointerdrag', function() {
-                map.getViewport().style.cursor = "move";
-            });
-            map.on('pointerup', function() {
-                map.getViewport().style.cursor = "default";
-            });
-        }
-        styleCursorMove();
-
-        // ========================================
-        // POPUP MANAGEMENT
-        // ========================================
-        var container = document.getElementById('popup');
-        var content = document.getElementById('popup-content');
-        var closer = document.getElementById('popup-closer');
-
-        function stopMediaInPopup() {
-            var mediaElements = container.querySelectorAll('audio, video');
-            mediaElements.forEach(function(media) {
-                media.pause();
-                media.currentTime = 0;
-            });
-        }
-
-        closer.onclick = function() {
-            container.style.display = 'none';
-            closer.blur();
-            stopMediaInPopup();
-            return false;
+        
+        // Category configuration with icons & pastel colors
+        const CATEGORIES = {
+            expense: [
+                { name: 'อาหาร', icon: 'fa-utensils', color: '#FF9F43', bg: '#FFF0E6' },
+                { name: 'เดินทาง', icon: 'fa-car-side', color: '#54A0FF', bg: '#EAF2FF' },
+                { name: 'ที่พัก', icon: 'fa-hotel', color: '#5F27CD', bg: '#F0EAFF' },
+                { name: 'ซื้อของ', icon: 'fa-bag-shopping', color: '#FF6B6B', bg: '#FFEAEA' },
+                { name: 'ที่เที่ยว', icon: 'fa-ticket', color: '#1DD1A1', bg: '#E8FAF4' },
+                { name: 'อื่นๆ', icon: 'fa-ellipsis', color: '#8395A7', bg: '#F0F2F5' }
+            ],
+            income: [
+                { name: 'เติมเงิน', icon: 'fa-wallet', color: '#10AC84', bg: '#E8F8F5' },
+                { name: 'คืนเงิน', icon: 'fa-rotate-left', color: '#00D2D3', bg: '#E0FAFA' },
+                { name: 'อื่นๆ', icon: 'fa-money-bill-wave', color: '#222F3E', bg: '#EAECEE' }
+            ]
         };
 
-        var overlayPopup = new ol.Overlay({
-            element: container,
-            autoPan: true
-        });
-        map.addOverlay(overlayPopup);
+        // Default Initial Sample Data
+        const SAMPLE_DATA = {
+            trip: {
+                name: "ทริปเที่ยวเชียงใหม่ 4 วัน 3 คืน",
+                budget: 12000,
+                startDate: getRelativeDateStr(-2),
+                endDate: getRelativeDateStr(1)
+            },
+            transactions: [
+                { id: '1', type: 'income', amount: 12000, category: 'เติมเงิน', date: getRelativeDateStr(-2), note: 'งบประมาณตั้งต้นทริป', location: 'บัญชีธนาคาร' },
+                { id: '2', type: 'expense', amount: 3500, category: 'ที่พัก', date: getRelativeDateStr(-2), note: 'มัดจำโฮมสเตย์ ม่อนแยม', location: 'แม่ริม' },
+                { id: '3', type: 'expense', amount: 450, category: 'เดินทาง', date: getRelativeDateStr(-2), note: 'ค่าน้ำมันรถเช่า', location: 'ปั๊ม PTT' },
+                { id: '4', type: 'expense', amount: 320, category: 'อาหาร', date: getRelativeDateStr(-1), note: 'ข้าวซอยและใส้อั่ว', location: 'ร้านแม่สาย' },
+                { id: '5', type: 'expense', amount: 890, category: 'ซื้อของ', date: getRelativeDateStr(0), note: 'ซื้อของฝากชาและกาแฟ', location: 'ตลาดวโรรส' }
+            ]
+        };
 
-        // ========================================
-        // FEATURE HIGHLIGHT
-        // ========================================
-        var collection = new ol.Collection();
-        var featureOverlay = new ol.layer.Vector({
-            map: map,
-            source: new ol.source.Vector({
-                features: collection,
-                useSpatialIndex: false
-            }),
-            style: [new ol.style.Style({
-                stroke: new ol.style.Stroke({
-                    color: '#f00',
-                    width: 2
-                }),
-                fill: new ol.style.Fill({
-                    color: 'rgba(255,0,0,0.1)'
-                }),
-            })],
-            updateWhileAnimating: true,
-            updateWhileInteracting: true
-        });
+        // Application State
+        let appData = {
+            trip: { name: '', budget: 0, startDate: '', endDate: '' },
+            transactions: []
+        };
 
-        var doHighlight = true;
-        var doHover = true;
-        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        let currentTxType = 'expense'; // 'expense' or 'income'
+        let donutChartInstance = null;
+        let barChartInstance = null;
 
-        // ========================================
-        // POPUP FIELD CREATION
-        // ========================================
-        function createPopupField(currentFeature, currentFeatureKeys, layer) {
-            var popupText = '';
-            for (var i = 0; i < currentFeatureKeys.length; i++) {
-                var key = currentFeatureKeys[i];
-                if (key != 'geometry' && key != 'layerObject' && key != 'idO' && key != '_mvtLayer_') {
-                    var popupField = '';
-                    var fieldLabel = layer.get('fieldLabels')[key];
+        // Map & Geolocation state variables
+        let mapInstance = null;
+        let userLocationMarker = null;
+        let routePolyline = null;
+        let currentCoordinates = { lat: 18.7883, lng: 98.9853 }; // Default Chiang Mai
 
-                    if (fieldLabel == "hidden field") {
-                        continue;
-                    } else if (fieldLabel == "inline label - visible with data") {
-                        if (currentFeature.get(key) == null) {
-                            continue;
-                        }
-                    }
-
-                    if (fieldLabel == "inline label - always visible" || fieldLabel == "inline label - visible with data") {
-                        popupField += '<th>' + layer.get('fieldAliases')[key] + '</th><td>';
-                    } else {
-                        popupField += '<td colspan="2">';
-                    }
-
-                    if (fieldLabel == "header label - visible with data") {
-                        if (currentFeature.get(key) == null) {
-                            continue;
-                        }
-                    }
-
-                    if (fieldLabel == "header label - always visible" || fieldLabel == "header label - visible with data") {
-                        popupField += '<strong>' + layer.get('fieldAliases')[key] + '</strong><br />';
-                    }
-
-                    var fieldValue = currentFeature.get(key);
-                    if (layer.get('fieldImages')[key] != "ExternalResource") {
-                        popupField += (fieldValue != null ? autolinker.link(fieldValue.toLocaleString()) + '</td>' : '');
-                    } else {
-                        if (/\.(gif|jpg|jpeg|tif|tiff|png|avif|webp|svg)$/i.test(fieldValue)) {
-                            popupField += (fieldValue != null ? '<img src="/images/' + fieldValue.replace(/[\\\/:]/g, '_').trim() + '" alt="image" /></td>' : '');
-                        } else if (/\.(mp4|webm|ogg|avi|mov|flv)$/i.test(fieldValue)) {
-                            popupField += (fieldValue != null ? '<video controls style="max-width:100%;"><source src="/images/' + fieldValue.replace(/[\\\/:]/g, '_').trim() + '" type="video/mp4">Your browser does not support the video tag.</video></td>' : '');
-                        } else if (/\.(mp3|wav|ogg|aac|flac)$/i.test(fieldValue)) {
-                            popupField += (fieldValue != null ? '<audio controls style="max-width:100%;"><source src="/images/' + fieldValue.replace(/[\\\/:]/g, '_').trim() + '" type="audio/mpeg">Your browser does not support the audio tag.</audio></td>' : '');
-                        } else {
-                            popupField += (fieldValue != null ? autolinker.link(fieldValue.toLocaleString()) + '</td>' : '');
-                        }
-                    }
-                    popupText += '<tr>' + popupField + '</tr>';
-                }
-            }
-            return popupText;
+        // Helper date generator
+        function getRelativeDateStr(offsetDays) {
+            const d = new Date();
+            d.setDate(d.getDate() + offsetDays);
+            return d.toISOString().split('T')[0];
         }
 
-        // ========================================
-        // POPUP DISPLAY ON HOVER
-        // ========================================
-        var highlight;
+        
+        function loadData() {
+            const saved = localStorage.getItem('travel_expense_tracker_data');
+            if (saved) {
+                try {
+                    appData = JSON.parse(saved);
+                } catch(e) {
+                    appData = JSON.parse(JSON.stringify(SAMPLE_DATA));
+                }
+            } else {
+                appData = JSON.parse(JSON.stringify(SAMPLE_DATA));
+                saveData();
+            }
+        }
 
-        function onPointerMove(evt) {
-            if (!doHover && !doHighlight) {
+        function saveData() {
+            localStorage.setItem('travel_expense_tracker_data', JSON.stringify(appData));
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(amount);
+        }
+
+        function formatDateTH(dateStr) {
+            if (!dateStr) return '';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            const year = parseInt(parts[0]) + 543; // Convert to BE
+            return `${parts[2]}/${parts[1]}/${year}`;
+        }
+
+        function getCategoryMeta(type, categoryName) {
+            const list = CATEGORIES[type] || CATEGORIES.expense;
+            const found = list.find(c => c.name === categoryName);
+            return found || { icon: 'fa-tags', color: '#8395A7', bg: '#F0F2F5' };
+        }
+
+        
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+            document.getElementById(`tab-${tabId}`).style.display = 'block';
+
+            // Desktop Nav highlight
+            document.querySelectorAll('.desktop-nav .nav-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('onclick').includes(tabId));
+            });
+
+            // Mobile Nav highlight
+            document.querySelectorAll('.bottom-nav-item').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('onclick').includes(tabId));
+            });
+
+            if (tabId === 'dashboard') {
+                renderDashboard();
+            } else if (tabId === 'transactions') {
+                renderTransactions();
+            } else if (tabId === 'settings') {
+                populateSettingsForm();
+            }
+        }
+
+        function initTravelMap() {
+            if (mapInstance) return; // Prevent re-initialization
+
+            const mapContainer = document.getElementById('travel-map');
+            if (!mapContainer) return;
+
+            // Initialize Leaflet map with OpenStreetMap Street view style
+            mapInstance = L.map('travel-map').setView([currentCoordinates.lat, currentCoordinates.lng], 13);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(mapInstance);
+
+            // Fetch user real-time position
+            getUserLocation(false);
+        }
+
+        function getUserLocation(showToastAlert = false) {
+            const districtText = document.getElementById('district-text');
+            const locationDetail = document.getElementById('location-detail-text');
+
+            if (showToastAlert) {
+                districtText.textContent = 'กำลังค้นหาตำแหน่ง...';
+            }
+
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        currentCoordinates = { lat, lng };
+
+                        updateMapAndLocation(lat, lng);
+                        fetchDistrictInfo(lat, lng);
+
+                        if (showToastAlert) showToast('อัปเดตตำแหน่งปัจจุบันเรียบร้อยแล้ว');
+                    },
+                    (error) => {
+                        console.warn("Geolocation warning:", error.message);
+                        // Fallback to Chiang Mai coordinates
+                        updateMapAndLocation(currentCoordinates.lat, currentCoordinates.lng);
+                        districtText.textContent = 'อำเภอเมืองเชียงใหม่ (พิกัดเริ่มต้น)';
+                        locationDetail.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: var(--warning-yellow);"></i> ไม่สามารถเข้าถึง GPS ได้ - แสดงตำแหน่งจำลองอำเภอเมืองเชียงใหม่`;
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            } else {
+                updateMapAndLocation(currentCoordinates.lat, currentCoordinates.lng);
+                districtText.textContent = 'อำเภอเมืองเชียงใหม่';
+            }
+        }
+
+        // Reverse Geocoding via OpenStreetMap Nominatim API to get Thai District (อำเภอ/เขต)
+        function fetchDistrictInfo(lat, lng) {
+            const districtText = document.getElementById('district-text');
+            const locationDetail = document.getElementById('location-detail-text');
+
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=th`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.address) {
+                        const addr = data.address;
+                        // Extract District (อำเภอ / เขต)
+                        const district = addr.amphoe || addr.district || addr.county || addr.city_district || addr.suburb || 'ไม่ระบุอำเภอ';
+                        const province = addr.state || addr.province || '';
+                        
+                        districtText.textContent = `กำลังยืนอยู่บริเวณ ${district} ${province ? '(' + province + ')' : ''}`;
+                        locationDetail.innerHTML = `<i class="fa-solid fa-location-dot" style="color:var(--expense);"></i> ${data.display_name}`;
+                    } else {
+                        districtText.textContent = 'ตรวจพบตำแหน่งแต่ไม่ระบุชื่ออำเภอ';
+                    }
+                })
+                .catch(err => {
+                    console.error("Geocoding Error:", err);
+                    districtText.textContent = `พิกัด ละติจูด: ${lat.toFixed(4)}, ลองจิจูด: ${lng.toFixed(4)}`;
+                });
+        }
+
+        function updateMapAndLocation(lat, lng) {
+            if (!mapInstance) return;
+
+            mapInstance.setView([lat, lng], 13);
+
+            // Custom icon for Current Position
+            const userIcon = L.divIcon({
+                className: 'custom-user-pin',
+                html: `<div style="background: var(--expense); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.3);"><i class="fa-solid fa-street-view"></i></div>`,
+                iconSize: [36, 36],
+                iconAnchor: [18, 18]
+            });
+
+            if (userLocationMarker) {
+                userLocationMarker.setLatLng([lat, lng]);
+            } else {
+                userLocationMarker = L.marker([lat, lng], { icon: userIcon }).addTo(mapInstance);
+                userLocationMarker.bindPopup('<b>คุณอยู่ที่นี่!</b><br>ตำแหน่งปัจจุบัน').openPopup();
+            }
+
+            // Draw route simulation connecting user location with key trip spots
+            drawTripRoute(lat, lng);
+        }
+
+        function drawTripRoute(userLat, userLng) {
+            if (routePolyline) mapInstance.removeLayer(routePolyline);
+
+            // Route points starting from current user location to nearby trip destinations
+            const routePoints = [
+                [userLat, userLng],
+                [userLat + 0.012, userLng + 0.015],
+                [userLat + 0.025, userLng + 0.008],
+                [userLat + 0.035, userLng - 0.012]
+            ];
+
+            // Draw cyan/mint route line
+            routePolyline = L.polyline(routePoints, {
+                color: '#2EC4B6',
+                weight: 5,
+                opacity: 0.8,
+                dashArray: '8, 8'
+            }).addTo(mapInstance);
+
+            // Add destination waypoints along route
+            const waypoints = [
+                { name: 'จุดเช็คอิน 1: ร้านอาหาร local', lat: userLat + 0.012, lng: userLng + 0.015 },
+                { name: 'จุดเช็คอิน 2: สถานที่ท่องเที่ยวทริป', lat: userLat + 0.025, lng: userLng + 0.008 },
+                { name: 'จุดเช็คอิน 3: ที่พักทริป', lat: userLat + 0.035, lng: userLng - 0.012 }
+            ];
+
+            waypoints.forEach(wp => {
+                const icon = L.divIcon({
+                    className: 'wp-pin',
+                    html: `<div style="background: var(--primary); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.2);"><i class="fa-solid fa-flag"></i></div>`,
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14]
+                });
+                L.marker([wp.lat, wp.lng], { icon: icon }).addTo(mapInstance).bindPopup(`<b>${wp.name}</b>`);
+            });
+        }
+
+        
+        function renderDashboard() {
+            // Render Trip info
+            document.getElementById('display-trip-name').textContent = appData.trip.name || "ทริปท่องเที่ยว";
+            const startFormatted = formatDateTH(appData.trip.startDate);
+            const endFormatted = formatDateTH(appData.trip.endDate);
+            document.getElementById('display-trip-dates').textContent = `${startFormatted} - ${endFormatted}`;
+
+            // Calculate Metrics
+            const budget = appData.trip.budget || 0;
+            let totalIncome = 0;
+            let totalExpense = 0;
+
+            appData.transactions.forEach(t => {
+                if (t.type === 'income') totalIncome += parseFloat(t.amount || 0);
+                if (t.type === 'expense') totalExpense += parseFloat(t.amount || 0);
+            });
+
+            const balance = budget + totalIncome - totalExpense;
+
+            // Update Stat Cards
+            document.getElementById('stat-budget').textContent = formatCurrency(budget);
+            document.getElementById('stat-income').textContent = formatCurrency(totalIncome);
+            document.getElementById('stat-expense').textContent = formatCurrency(totalExpense);
+            document.getElementById('stat-balance').textContent = formatCurrency(balance);
+
+            // Progress Bar Calculation (Total Expenses / Trip Budget)
+            const fillEl = document.getElementById('progress-bar-fill');
+            const percentTextEl = document.getElementById('progress-percent-text');
+            let percentage = budget > 0 ? (totalExpense / budget) * 100 : 0;
+            const displayPercentage = Math.min(Math.round(percentage), 100);
+
+            fillEl.style.width = `${Math.min(percentage, 100)}%`;
+            percentTextEl.textContent = `${Math.round(percentage)}% ของงบตั้งไว้`;
+
+            // Dynamic Color coding for budget progress
+            if (percentage < 60) {
+                fillEl.style.backgroundColor = 'var(--primary)'; // Green / Mint
+            } else if (percentage <= 85) {
+                fillEl.style.backgroundColor = 'var(--warning-yellow)'; // Yellow
+            } else {
+                fillEl.style.backgroundColor = 'var(--danger-red)'; // Red
+            }
+
+            // Render Recent 5 Transactions
+            renderRecentTransactions();
+
+            // Render Charts
+            renderCharts();
+
+            // Initialize Map
+            setTimeout(initTravelMap, 300);
+        }
+
+        function renderRecentTransactions() {
+            const listEl = document.getElementById('recent-transaction-list');
+            const sorted = [...appData.transactions].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+
+            if (sorted.length === 0) {
+                listEl.innerHTML = `<div class="empty-state"><i class="fa-solid fa-receipt"></i><p>ยังไม่มีรายการบันทึก</p></div>`;
                 return;
             }
 
-            var pixel = map.getEventPixel(evt.originalEvent);
-            var coord = evt.coordinate;
-            var currentFeature;
-            var currentLayer;
-            var currentFeatureKeys;
-            var clusteredFeatures;
-            var clusterLength;
-            var popupText = '<ul>';
+            listEl.innerHTML = sorted.map(t => createTransactionItemHTML(t, false)).join('');
+        }
 
-            var featuresAndLayers = [];
-            map.forEachFeatureAtPixel(pixel, function(feature, layer) {
-                if (layer && feature instanceof ol.Feature && (layer.get("interactive") || layer.get("interactive") === undefined)) {
-                    featuresAndLayers.push({ feature, layer });
+        function renderCharts() {
+            // --- 1. Expense Donut Chart ---
+            const expCategories = CATEGORIES.expense.map(c => c.name);
+            const expData = expCategories.map(cat => {
+                return appData.transactions
+                    .filter(t => t.type === 'expense' && t.category === cat)
+                    .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+            });
+
+            const donutColors = CATEGORIES.expense.map(c => c.color);
+
+            const ctxDonut = document.getElementById('categoryDonutChart').getContext('2d');
+            if (donutChartInstance) donutChartInstance.destroy();
+
+            donutChartInstance = new Chart(ctxDonut, {
+                type: 'doughnut',
+                data: {
+                    labels: expCategories,
+                    datasets: [{
+                        data: expData,
+                        backgroundColor: donutColors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { family: 'Prompt', size: 12 } } }
+                    },
+                    cutout: '65%'
                 }
             });
 
-            for (var i = featuresAndLayers.length - 1; i >= 0; i--) {
-                var feature = featuresAndLayers[i].feature;
-                var layer = featuresAndLayers[i].layer;
-                var doPopup = false;
+            // --- 2. Daily Bar Chart ---
+            const dailyMap = {};
+            appData.transactions
+                .filter(t => t.type === 'expense')
+                .forEach(t => {
+                    dailyMap[t.date] = (dailyMap[t.date] || 0) + parseFloat(t.amount || 0);
+                });
 
-                for (var k in layer.get('fieldImages')) {
-                    if (layer.get('fieldImages')[k] != "Hidden") {
-                        doPopup = true;
+            const dates = Object.keys(dailyMap).sort();
+            const formattedDates = dates.map(d => formatDateTH(d));
+            const dailyAmounts = dates.map(d => dailyMap[d]);
+
+            const ctxBar = document.getElementById('dailyBarChart').getContext('2d');
+            if (barChartInstance) barChartInstance.destroy();
+
+            barChartInstance = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: formattedDates,
+                    datasets: [{
+                        label: 'รายจ่าย (บาท)',
+                        data: dailyAmounts,
+                        backgroundColor: '#54A0FF',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true }
                     }
                 }
+            });
+        }
 
-                currentFeature = feature;
-                currentLayer = layer;
-                clusteredFeatures = feature.get("features");
+        
+        function createTransactionItemHTML(t, showActions = true) {
+            const meta = getCategoryMeta(t.type, t.category);
+            const isIncome = t.type === 'income';
+            const sign = isIncome ? '+' : '-';
+            const amountClass = isIncome ? 'income' : 'expense';
 
-                if (clusteredFeatures) {
-                    clusterLength = clusteredFeatures.length;
-                }
+            return `
+                <div class="transaction-item">
+                    <div class="tx-left">
+                        <div class="tx-icon" style="background:${meta.bg}; color:${meta.color};">
+                            <i class="fa-solid ${meta.icon}"></i>
+                        </div>
+                        <div class="tx-info">
+                            <h4>${t.note || t.category}</h4>
+                            <p>
+                                <span><i class="fa-regular fa-calendar"></i> ${formatDateTH(t.date)}</span>
+                                ${t.location ? `<span><i class="fa-solid fa-location-dot"></i> ${t.location}</span>` : ''}
+                                <span style="background:${meta.bg}; color:${meta.color}; padding: 2px 8px; border-radius: 10px; font-weight:500;">${t.category}</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="tx-right">
+                        <div class="tx-amount ${amountClass}">
+                            ${sign}${formatCurrency(t.amount)}
+                        </div>
+                        ${showActions ? `
+                        <div class="tx-actions">
+                            <button class="icon-btn" onclick="openTransactionModal('${t.id}')" title="แก้ไข"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button class="icon-btn delete" onclick="confirmDeleteTransaction('${t.id}')" title="ลบ"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
 
-                if (typeof clusteredFeatures !== "undefined") {
-                    if (doPopup) {
-                        for(var n=0; n<clusteredFeatures.length; n++) {
-                            currentFeature = clusteredFeatures[n];
-                            currentFeatureKeys = currentFeature.getKeys();
-                            popupText += '<li><table>';
-                            popupText += '<tr><th colspan="2">' + layer.get('popuplayertitle') + '</th></tr>';
-                            popupText += createPopupField(currentFeature, currentFeatureKeys, layer);
-                            popupText += '</table></li>';
-                        }
-                    }
-                } else {
-                    currentFeatureKeys = currentFeature.getKeys();
-                    if (doPopup) {
-                        popupText += '<li><table>';
-                        popupText += '<tr><th colspan="2">' + layer.get('popuplayertitle') + '</th></tr>';
-                        popupText += createPopupField(currentFeature, currentFeatureKeys, layer);
-                        popupText += '</table></li>';
-                    }
-                }
+        function renderTransactions() {
+            const listEl = document.getElementById('full-transaction-list');
+            const search = document.getElementById('search-input').value.toLowerCase();
+            const typeFilter = document.getElementById('filter-type').value;
+            const categoryFilter = document.getElementById('filter-category').value;
+            const sortOrder = document.getElementById('sort-order').value;
+
+            let filtered = appData.transactions.filter(t => {
+                const matchSearch = (t.note && t.note.toLowerCase().includes(search)) ||
+                                    (t.location && t.location.toLowerCase().includes(search)) ||
+                                    t.category.toLowerCase().includes(search);
+                const matchType = typeFilter === 'all' || t.type === typeFilter;
+                const matchCat = categoryFilter === 'all' || t.category === categoryFilter;
+
+                return matchSearch && matchType && matchCat;
+            });
+
+            // Sorting
+            filtered.sort((a,b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+            });
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `<div class="empty-state"><i class="fa-solid fa-magnifying-glass"></i><p>ไม่พบรายการที่ค้นหา</p></div>`;
+                return;
             }
 
-            if (popupText == '<ul>') {
-                popupText = '';
+            listEl.innerHTML = filtered.map(t => createTransactionItemHTML(t, true)).join('');
+        }
+
+        
+        function setTransactionType(type) {
+            currentTxType = type;
+            const btnExpense = document.getElementById('type-btn-expense');
+            const btnIncome = document.getElementById('type-btn-income');
+
+            if (type === 'expense') {
+                btnExpense.className = 'type-btn active expense';
+                btnIncome.className = 'type-btn';
             } else {
-                popupText += '</ul>';
+                btnExpense.className = 'type-btn';
+                btnIncome.className = 'type-btn active income';
             }
 
-            if (doHighlight) {
-                if (currentFeature !== highlight) {
-                    if (highlight) {
-                        featureOverlay.getSource().removeFeature(highlight);
-                    }
-                    if (currentFeature) {
-                        var featureStyle;
-                        if (typeof clusteredFeatures == "undefined") {
-                            var style = currentLayer.getStyle();
-                            var styleFunction = typeof style === 'function' ? style : function() { return style; };
-                            featureStyle = styleFunction(currentFeature)[0];
-                        } else {
-                            featureStyle = currentLayer.getStyle().toString();
-                        }
-
-                        var highlightStyle;
-                        if (currentFeature.getGeometry().getType() == 'Point' || currentFeature.getGeometry().getType() == 'MultiPoint') {
-                            var radius;
-                            if (typeof clusteredFeatures == "undefined") {
-                                radius = featureStyle.getImage().getRadius();
-                            } else {
-                                radius = parseFloat(featureStyle.split('radius')[1].split(' ')[1]) + clusterLength;
-                            }
-
-                            highlightStyle = new ol.style.Style({
-                                image: new ol.style.Circle({
-                                    fill: new ol.style.Fill({
-                                        color: "rgba(255, 255, 0, 1.00)"
-                                    }),
-                                    radius: radius
-                                })
-                            });
-                        } else if (currentFeature.getGeometry().getType() == 'LineString' || currentFeature.getGeometry().getType() == 'MultiLineString') {
-                            var featureWidth = featureStyle.getStroke().getWidth();
-
-                            highlightStyle = new ol.style.Style({
-                                stroke: new ol.style.Stroke({
-                                    color: 'rgba(255, 255, 0, 1.00)',
-                                    lineDash: null,
-                                    width: featureWidth
-                                })
-                            });
-                        } else {
-                            highlightStyle = new ol.style.Style({
-                                fill: new ol.style.Fill({
-                                    color: 'rgba(255, 255, 0, 1.00)'
-                                })
-                            });
-                        }
-
-                        featureOverlay.getSource().addFeature(currentFeature);
-                        featureOverlay.setStyle(highlightStyle);
-                    }
-                    highlight = currentFeature;
-                }
-            }
-
-            if (doHover) {
-                if (popupText) {
-                    content.innerHTML = popupText;
-                    container.style.display = 'block';
-                    overlayPopup.setPosition(coord);
-                } else {
-                    container.style.display = 'none';
-                    closer.blur();
-                }
-            }
+            // Populate category dropdown
+            const catSelect = document.getElementById('tx-category');
+            catSelect.innerHTML = CATEGORIES[type].map(c => `<option value="${c.name}">${c.name}</option>`).join('');
         }
 
-        map.on('pointermove', onPointerMove);
+        function openTransactionModal(editId = null) {
+            const modal = document.getElementById('transaction-modal');
+            const form = document.getElementById('transaction-form');
+            form.reset();
 
-        // ========================================
-        // CONTAINER SETUP
-        // ========================================
-        var topLeftContainerDiv = document.createElement('div');
-        topLeftContainerDiv.id = 'top-left-container';
-        document.getElementById('map').appendChild(topLeftContainerDiv);
-
-        var topRightContainerDiv = document.createElement('div');
-        topRightContainerDiv.id = 'top-right-container';
-        document.getElementById('map').appendChild(topRightContainerDiv);
-
-        var bottomLeftContainerDiv = document.createElement('div');
-        bottomLeftContainerDiv.id = 'bottom-left-container';
-        document.getElementById('map').appendChild(bottomLeftContainerDiv);
-
-        var bottomRightContainerDiv = document.createElement('div');
-        bottomRightContainerDiv.id = 'bottom-right-container';
-        document.getElementById('map').appendChild(bottomRightContainerDiv);
-
-        // ========================================
-        // LAYER SWITCHER
-        // ========================================
-        var layerSwitcher = new ol.control.LayerSwitcher({
-            tipLabel: "Layers",
-            target: topRightContainerDiv
-        });
-        map.addControl(layerSwitcher);
-
-        // ========================================
-        // ATTRIBUTION
-        // ========================================
-        var bottomAttribution = new ol.control.Attribution({
-            collapsible: false,
-            collapsed: false,
-            className: 'bottom-attribution'
-        });
-        map.addControl(bottomAttribution);
-
-        map.once('rendercomplete', function() {
-            var bottomAttributionUl = bottomAttribution.element.querySelector('ul');
-            if (bottomAttributionUl) {
-                var layerAttrs = Array.from(bottomAttributionUl.querySelectorAll('li'))
-                    .map(function(li) { return li.innerHTML.trim(); }).filter(Boolean);
-                var attribHtml = `
-                <a href="https://github.com/qgis2web/qgis2web">qgis2web</a> &middot;
-                <a href="https://openlayers.org/">OpenLayers</a> &middot;
-                <a href="https://qgis.org/">QGIS</a>`;
-                if (layerAttrs.length > 0) { 
-                    attribHtml += ' &nbsp;|&nbsp; ' + layerAttrs.join(', '); 
+            if (editId) {
+                const item = appData.transactions.find(t => t.id === editId);
+                if (item) {
+                    document.getElementById('modal-tx-title').textContent = 'แก้ไขรายการ';
+                    document.getElementById('tx-id').value = item.id;
+                    setTransactionType(item.type);
+                    document.getElementById('tx-amount').value = item.amount;
+                    document.getElementById('tx-category').value = item.category;
+                    document.getElementById('tx-date').value = item.date;
+                    document.getElementById('tx-note').value = item.note || '';
+                    document.getElementById('tx-location').value = item.location || '';
                 }
-                bottomAttributionUl.innerHTML = '<li>' + attribHtml + '</li>';
+            } else {
+                document.getElementById('modal-tx-title').textContent = 'เพิ่มรายการใหม่';
+                document.getElementById('tx-id').value = '';
+                setTransactionType('expense');
+                document.getElementById('tx-date').value = new Date().toISOString().split('T')[0];
             }
-        });
 
-        // Move attribution to bottom right
-        var attributionControl = document.querySelector('.bottom-attribution');
-        if (attributionControl) {
-            bottomRightContainerDiv.appendChild(attributionControl);
+            modal.classList.add('active');
         }
 
-        // ========================================
-        // DISABLE HOVER ON CONTROLS
-        // ========================================
-        var preDoHover = doHover;
-        var preDoHighlight = doHighlight;
-        var isPopupAllActive = false;
+        function closeTransactionModal() {
+            document.getElementById('transaction-modal').classList.remove('active');
+        }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            if (doHover || doHighlight) {
-                var controlElements = document.getElementsByClassName('ol-control');
-                for (var i = 0; i < controlElements.length; i++) {
-                    controlElements[i].addEventListener('mouseover', function() {
-                        doHover = false;
-                        doHighlight = false;
-                    });
-                    controlElements[i].addEventListener('mouseout', function() {
-                        doHover = preDoHover;
-                        if (isPopupAllActive) { return; }
-                        doHighlight = preDoHighlight;
-                    });
+        function handleSaveTransaction(e) {
+            e.preventDefault();
+            const id = document.getElementById('tx-id').value;
+            const amount = parseFloat(document.getElementById('tx-amount').value);
+            const category = document.getElementById('tx-category').value;
+            const date = document.getElementById('tx-date').value;
+            const note = document.getElementById('tx-note').value.trim();
+            const location = document.getElementById('tx-location').value.trim();
+
+            if (id) {
+                // Edit
+                const index = appData.transactions.findIndex(t => t.id === id);
+                if (index !== -1) {
+                    appData.transactions[index] = { id, type: currentTxType, amount, category, date, note, location };
+                    showToast('อัปเดตรายการเรียบร้อยแล้ว');
                 }
+            } else {
+                // Add new
+                const newItem = {
+                    id: Date.now().toString(),
+                    type: currentTxType,
+                    amount,
+                    category,
+                    date,
+                    note,
+                    location
+                };
+                appData.transactions.push(newItem);
+                showToast('เพิ่มรายการสำเร็จ');
             }
-        });
+
+            saveData();
+            closeTransactionModal();
+            renderDashboard();
+            renderTransactions();
+        }
+
+        function confirmDeleteTransaction(id) {
+            showConfirmModal(
+                'ลบรายการบันทึก',
+                'คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้?',
+                () => {
+                    appData.transactions = appData.transactions.filter(t => t.id !== id);
+                    saveData();
+                    renderDashboard();
+                    renderTransactions();
+                    showToast('ลบรายการเรียบร้อย');
+                }
+            );
+        }
+
+        
+        function populateSettingsForm() {
+            document.getElementById('set-trip-name').value = appData.trip.name || '';
+            document.getElementById('set-trip-budget').value = appData.trip.budget || 0;
+            document.getElementById('set-start-date').value = appData.trip.startDate || '';
+            document.getElementById('set-end-date').value = appData.trip.endDate || '';
+        }
+
+        function handleSaveTripSettings(e) {
+            e.preventDefault();
+            appData.trip.name = document.getElementById('set-trip-name').value.trim();
+            appData.trip.budget = parseFloat(document.getElementById('set-trip-budget').value) || 0;
+            appData.trip.startDate = document.getElementById('set-start-date').value;
+            appData.trip.endDate = document.getElementById('set-end-date').value;
+
+            saveData();
+            renderDashboard();
+            showToast('บันทึกการตั้งค่างบประมาณทริปแล้ว');
+        }
+
+        function openBudgetModal() {
+            switchTab('settings');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Export to UTF-8 CSV with BOM for Thai support in Excel
+        function exportToCSV() {
+            if (appData.transactions.length === 0) {
+                showToast('ไม่มีข้อมูลสำหรับส่งออก');
+                return;
+            }
+
+            let csvContent = "\uFEFF"; // UTF-8 BOM
+            csvContent += "วันที่,ประเภท,หมวดหมู่,จำนวนเงิน(THB),หมายเหตุ,สถานที่\n";
+
+            appData.transactions.forEach(t => {
+                const typeText = t.type === 'income' ? 'รายรับ' : 'รายจ่าย';
+                const row = [
+                    `"${t.date}"`,
+                    `"${typeText}"`,
+                    `"${t.category}"`,
+                    t.amount,
+                    `"${(t.note || '').replace(/"/g, '""')}"`,
+                    `"${(t.location || '').replace(/"/g, '""')}"`
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Trip_Expenses_${appData.trip.name || 'Export'}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('ดาวน์โหลดไฟล์ CSV เรียบร้อยแล้ว');
+        }
+
+        function loadSampleData() {
+            showConfirmModal(
+                'โหลดข้อมูลตัวอย่าง',
+                'การโหลดข้อมูลตัวอย่างจะแทนที่ข้อมูลปัจจุบัน คุณต้องการดำเนินการต่อหรือไม่?',
+                () => {
+                    appData = JSON.parse(JSON.stringify(SAMPLE_DATA));
+                    saveData();
+                    renderDashboard();
+                    renderTransactions();
+                    populateSettingsForm();
+                    showToast('โหลดข้อมูลตัวอย่างสำเร็จ');
+                }
+            );
+        }
+
+        function promptClearAllData() {
+            showConfirmModal(
+                'ล้างข้อมูลทั้งหมด',
+                'คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลทั้งหมด? ข้อมูลนี้จะไม่สามารถกู้คืนได้!',
+                () => {
+                    appData = {
+                        trip: { name: 'ทริปใหม่', budget: 0, startDate: getRelativeDateStr(0), endDate: getRelativeDateStr(3) },
+                        transactions: []
+                    };
+                    saveData();
+                    renderDashboard();
+                    renderTransactions();
+                    populateSettingsForm();
+                    showToast('ล้างข้อมูลเรียบร้อยแล้ว');
+                }
+            );
+        }
+
+        
+        function showConfirmModal(title, message, onConfirm) {
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            const btn = document.getElementById('confirm-action-btn');
+
+            // Clear old click listeners
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+
+            newBtn.addEventListener('click', () => {
+                onConfirm();
+                closeConfirmModal();
+            });
+
+            document.getElementById('confirm-modal').classList.add('active');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.remove('active');
+        }
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = `<i class="fa-solid fa-circle-check" style="color:var(--primary);"></i> ${message}`;
+            container.appendChild(toast);
+
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        // Initialize App on DOM Content Loaded
+        window.onload = function() {
+            loadData();
+            renderDashboard();
+            setTransactionType('expense');
+        };
     </script>
 </body>
 </html>
