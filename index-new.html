@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    
+    <title>Remember Map</title>
+    
+    <!-- CSS Resources -->
+    <link rel="stylesheet" href="./resources/ol.css">
+    <link rel="stylesheet" href="./resources/fontawesome-all.min.css">
+    <link href="./resources/photon-geocoder-autocomplete.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="./resources/ol-layerswitcher.css">
+    <link rel="stylesheet" href="./resources/qgis2web.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #ffffff;
+        }
+
+        #map {
+            position: relative;
+        }
+
+        /* Popup Styling */
+        .ol-popup {
+            position: absolute;
+            background-color: white;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #cccccc;
+            bottom: 12px;
+            left: -50px;
+            min-width: 280px;
+            max-width: 400px;
+            z-index: 100;
+        }
+
+        .ol-popup:after, .ol-popup:before {
+            top: 100%;
+            border: solid transparent;
+            content: " ";
+            height: 0;
+            width: 0;
+            position: absolute;
+            pointer-events: none;
+        }
+
+        .ol-popup:after {
+            border-top-color: white;
+            border-width: 10px;
+            left: 48px;
+            margin-left: -10px;
+        }
+
+        .ol-popup:before {
+            border-top-color: #cccccc;
+            border-width: 11px;
+            left: 48px;
+            margin-left: -11px;
+        }
+
+        .ol-popup-closer {
+            text-decoration: none;
+            position: absolute;
+            top: 2px;
+            right: 8px;
+            cursor: pointer;
+            color: #999;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .ol-popup-closer:hover {
+            color: #000;
+        }
+
+        #popup-content {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        #popup-content table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        #popup-content th, #popup-content td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        #popup-content th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+
+        #popup-content img, #popup-content video, #popup-content audio {
+            max-width: 100%;
+            margin-top: 10px;
+            border-radius: 4px;
+        }
+
+        /* Control Styling */
+        .ol-control > * {
+            background-color: #f8f8f8 !important;
+            color: #444444 !important;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .ol-control > *:hover, .ol-control > *:focus {
+            background-color: rgba(248, 248, 248, 0.9) !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .ol-control {
+            background-color: rgba(255, 255, 255, 0.8) !important;
+            padding: 3px !important;
+            border-radius: 4px;
+        }
+
+        .ol-attribution a, .gcd-gl-input::placeholder, .search-layer-input-search::placeholder {
+            color: #444444 !important;
+        }
+
+        .search-layer-input-search {
+            background-color: #f8f8f8 !important;
+        }
+
+        /* Tooltip Styling */
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            white-space: nowrap;
+        }
+
+        .tooltip.hidden {
+            display: none;
+        }
+
+        .tooltip-static {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .tooltip-measure {
+            background: rgba(0, 0, 0, 0.8);
+            font-weight: bold;
+        }
+
+        /* Container Layout */
+        #top-left-container, #top-right-container, 
+        #bottom-left-container, #bottom-right-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        #top-left-container {
+            top: 12px;
+            left: 12px;
+        }
+
+        #top-right-container {
+            top: 12px;
+            right: 12px;
+        }
+
+        #bottom-left-container {
+            bottom: 12px;
+            left: 12px;
+        }
+
+        #bottom-right-container {
+            bottom: 12px;
+            right: 12px;
+        }
+
+        /* Loading Animation */
+        .roller-switcher {
+            display: inline-block;
+            position: relative;
+        }
+
+        .roller-switcher div {
+            animation: roller-switcher 1.2s cubic-bezier(0, 0.5, 0.5, 1) infinite;
+        }
+
+        .roller-switcher div:nth-child(1) {
+            animation-delay: -0.24s;
+        }
+
+        .roller-switcher div:nth-child(2) {
+            animation-delay: -0.12s;
+        }
+
+        @keyframes roller-switcher {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .ol-popup {
+                min-width: 200px;
+                max-width: 90vw;
+            }
+
+            #popup-content {
+                font-size: 12px;
+            }
+
+            #top-left-container, #top-right-container,
+            #bottom-left-container, #bottom-right-container {
+                gap: 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="map">
+        <div id="popup" class="ol-popup">
+            <a href="#" id="popup-closer" class="ol-popup-closer">&times;</a>
+            <div id="popup-content"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="./resources/qgis2web_expressions.js"></script>
+    <script src="./resources/proj4.js"></script>
+    <script>
+        proj4.defs('EPSG:4326', '+proj=longlat +datum=WGS84 +no_defs');
+    </script>
+    <script src="./resources/functions.js"></script>
+    <script src="./resources/ol.js"></script>
+    <script src="./resources/ol-layerswitcher.js"></script>
+    <script src="./resources/photon-geocoder-autocomplete.min.js"></script>
+    <script src="./resources/olms.js"></script>
+    <script src="./layers/_1.js"></script>
+    <script src="./layers/RSC_2.js"></script>
+    <script src="./styles/_1_style.js"></script>
+    <script src="./styles/RSC_2_style.js"></script>
+    <script src="./layers/layers.js" type="text/javascript"></script>
+    <script src="./resources/Autolinker.min.js"></script>
+
+    <script>
+        // ========================================
+        // MAP INITIALIZATION
+        // ========================================
+        var map = new ol.Map({
+            target: 'map',
+            renderer: 'canvas',
+            layers: layersList,
+            view: new ol.View({
+                constrainResolution: true,
+                maxZoom: 28,
+                minZoom: 1,
+                extent: [97.354107, 12.813512, 108.281768, 18.968284],
+                projection: new ol.proj.Projection({
+                    code: 'EPSG:4326',
+                    units: 'degrees'
+                })
+            })
+        });
+
+        // Initial view
+        map.getView().fit([97.354107, 12.813512, 108.281768, 18.968284], map.getSize());
+
+        // ========================================
+        // CURSOR MANAGEMENT
+        // ========================================
+        function pointerOnFeature(evt) {
+            if (evt.dragging) {
+                return;
+            }
+            var hasFeature = map.hasFeatureAtPixel(evt.pixel, {
+                layerFilter: function(layer) {
+                    return layer && (layer.get("interactive"));
+                }
+            });
+            map.getViewport().style.cursor = hasFeature ? "pointer" : "";
+        }
+
+        map.on('pointermove', pointerOnFeature);
+
+        function styleCursorMove() {
+            map.on('pointerdrag', function() {
+                map.getViewport().style.cursor = "move";
+            });
+            map.on('pointerup', function() {
+                map.getViewport().style.cursor = "default";
+            });
+        }
+        styleCursorMove();
+
+        // ========================================
+        // POPUP MANAGEMENT
+        // ========================================
+        var container = document.getElementById('popup');
+        var content = document.getElementById('popup-content');
+        var closer = document.getElementById('popup-closer');
+
+        function stopMediaInPopup() {
+            var mediaElements = container.querySelectorAll('audio, video');
+            mediaElements.forEach(function(media) {
+                media.pause();
+                media.currentTime = 0;
+            });
+        }
+
+        closer.onclick = function() {
+            container.style.display = 'none';
+            closer.blur();
+            stopMediaInPopup();
+            return false;
+        };
+
+        var overlayPopup = new ol.Overlay({
+            element: container,
+            autoPan: true
+        });
+        map.addOverlay(overlayPopup);
+
+        // ========================================
+        // FEATURE HIGHLIGHT
+        // ========================================
+        var collection = new ol.Collection();
+        var featureOverlay = new ol.layer.Vector({
+            map: map,
+            source: new ol.source.Vector({
+                features: collection,
+                useSpatialIndex: false
+            }),
+            style: [new ol.style.Style({
+                stroke: new ol.style.Stroke({
+                    color: '#f00',
+                    width: 2
+                }),
+                fill: new ol.style.Fill({
+                    color: 'rgba(255,0,0,0.1)'
+                }),
+            })],
+            updateWhileAnimating: true,
+            updateWhileInteracting: true
+        });
+
+        var doHighlight = true;
+        var doHover = true;
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+
+        // ========================================
+        // POPUP FIELD CREATION
+        // ========================================
+        function createPopupField(currentFeature, currentFeatureKeys, layer) {
+            var popupText = '';
+            for (var i = 0; i < currentFeatureKeys.length; i++) {
+                var key = currentFeatureKeys[i];
+                if (key != 'geometry' && key != 'layerObject' && key != 'idO' && key != '_mvtLayer_') {
+                    var popupField = '';
+                    var fieldLabel = layer.get('fieldLabels')[key];
+
+                    if (fieldLabel == "hidden field") {
+                        continue;
+                    } else if (fieldLabel == "inline label - visible with data") {
+                        if (currentFeature.get(key) == null) {
+                            continue;
+                        }
+                    }
+
+                    if (fieldLabel == "inline label - always visible" || fieldLabel == "inline label - visible with data") {
+                        popupField += '<th>' + layer.get('fieldAliases')[key] + '</th><td>';
+                    } else {
+                        popupField += '<td colspan="2">';
+                    }
+
+                    if (fieldLabel == "header label - visible with data") {
+                        if (currentFeature.get(key) == null) {
+                            continue;
+                        }
+                    }
+
+                    if (fieldLabel == "header label - always visible" || fieldLabel == "header label - visible with data") {
+                        popupField += '<strong>' + layer.get('fieldAliases')[key] + '</strong><br />';
+                    }
+
+                    var fieldValue = currentFeature.get(key);
+                    if (layer.get('fieldImages')[key] != "ExternalResource") {
+                        popupField += (fieldValue != null ? autolinker.link(fieldValue.toLocaleString()) + '</td>' : '');
+                    } else {
+                        if (/\.(gif|jpg|jpeg|tif|tiff|png|avif|webp|svg)$/i.test(fieldValue)) {
+                            popupField += (fieldValue != null ? '<img src="/images/' + fieldValue.replace(/[\\\/:]/g, '_').trim() + '" alt="image" /></td>' : '');
+                        } else if (/\.(mp4|webm|ogg|avi|mov|flv)$/i.test(fieldValue)) {
+                            popupField += (fieldValue != null ? '<video controls style="max-width:100%;"><source src="/images/' + fieldValue.replace(/[\\\/:]/g, '_').trim() + '" type="video/mp4">Your browser does not support the video tag.</video></td>' : '');
+                        } else if (/\.(mp3|wav|ogg|aac|flac)$/i.test(fieldValue)) {
+                            popupField += (fieldValue != null ? '<audio controls style="max-width:100%;"><source src="/images/' + fieldValue.replace(/[\\\/:]/g, '_').trim() + '" type="audio/mpeg">Your browser does not support the audio tag.</audio></td>' : '');
+                        } else {
+                            popupField += (fieldValue != null ? autolinker.link(fieldValue.toLocaleString()) + '</td>' : '');
+                        }
+                    }
+                    popupText += '<tr>' + popupField + '</tr>';
+                }
+            }
+            return popupText;
+        }
+
+        // ========================================
+        // POPUP DISPLAY ON HOVER
+        // ========================================
+        var highlight;
+
+        function onPointerMove(evt) {
+            if (!doHover && !doHighlight) {
+                return;
+            }
+
+            var pixel = map.getEventPixel(evt.originalEvent);
+            var coord = evt.coordinate;
+            var currentFeature;
+            var currentLayer;
+            var currentFeatureKeys;
+            var clusteredFeatures;
+            var clusterLength;
+            var popupText = '<ul>';
+
+            var featuresAndLayers = [];
+            map.forEachFeatureAtPixel(pixel, function(feature, layer) {
+                if (layer && feature instanceof ol.Feature && (layer.get("interactive") || layer.get("interactive") === undefined)) {
+                    featuresAndLayers.push({ feature, layer });
+                }
+            });
+
+            for (var i = featuresAndLayers.length - 1; i >= 0; i--) {
+                var feature = featuresAndLayers[i].feature;
+                var layer = featuresAndLayers[i].layer;
+                var doPopup = false;
+
+                for (var k in layer.get('fieldImages')) {
+                    if (layer.get('fieldImages')[k] != "Hidden") {
+                        doPopup = true;
+                    }
+                }
+
+                currentFeature = feature;
+                currentLayer = layer;
+                clusteredFeatures = feature.get("features");
+
+                if (clusteredFeatures) {
+                    clusterLength = clusteredFeatures.length;
+                }
+
+                if (typeof clusteredFeatures !== "undefined") {
+                    if (doPopup) {
+                        for(var n=0; n<clusteredFeatures.length; n++) {
+                            currentFeature = clusteredFeatures[n];
+                            currentFeatureKeys = currentFeature.getKeys();
+                            popupText += '<li><table>';
+                            popupText += '<tr><th colspan="2">' + layer.get('popuplayertitle') + '</th></tr>';
+                            popupText += createPopupField(currentFeature, currentFeatureKeys, layer);
+                            popupText += '</table></li>';
+                        }
+                    }
+                } else {
+                    currentFeatureKeys = currentFeature.getKeys();
+                    if (doPopup) {
+                        popupText += '<li><table>';
+                        popupText += '<tr><th colspan="2">' + layer.get('popuplayertitle') + '</th></tr>';
+                        popupText += createPopupField(currentFeature, currentFeatureKeys, layer);
+                        popupText += '</table></li>';
+                    }
+                }
+            }
+
+            if (popupText == '<ul>') {
+                popupText = '';
+            } else {
+                popupText += '</ul>';
+            }
+
+            if (doHighlight) {
+                if (currentFeature !== highlight) {
+                    if (highlight) {
+                        featureOverlay.getSource().removeFeature(highlight);
+                    }
+                    if (currentFeature) {
+                        var featureStyle;
+                        if (typeof clusteredFeatures == "undefined") {
+                            var style = currentLayer.getStyle();
+                            var styleFunction = typeof style === 'function' ? style : function() { return style; };
+                            featureStyle = styleFunction(currentFeature)[0];
+                        } else {
+                            featureStyle = currentLayer.getStyle().toString();
+                        }
+
+                        var highlightStyle;
+                        if (currentFeature.getGeometry().getType() == 'Point' || currentFeature.getGeometry().getType() == 'MultiPoint') {
+                            var radius;
+                            if (typeof clusteredFeatures == "undefined") {
+                                radius = featureStyle.getImage().getRadius();
+                            } else {
+                                radius = parseFloat(featureStyle.split('radius')[1].split(' ')[1]) + clusterLength;
+                            }
+
+                            highlightStyle = new ol.style.Style({
+                                image: new ol.style.Circle({
+                                    fill: new ol.style.Fill({
+                                        color: "rgba(255, 255, 0, 1.00)"
+                                    }),
+                                    radius: radius
+                                })
+                            });
+                        } else if (currentFeature.getGeometry().getType() == 'LineString' || currentFeature.getGeometry().getType() == 'MultiLineString') {
+                            var featureWidth = featureStyle.getStroke().getWidth();
+
+                            highlightStyle = new ol.style.Style({
+                                stroke: new ol.style.Stroke({
+                                    color: 'rgba(255, 255, 0, 1.00)',
+                                    lineDash: null,
+                                    width: featureWidth
+                                })
+                            });
+                        } else {
+                            highlightStyle = new ol.style.Style({
+                                fill: new ol.style.Fill({
+                                    color: 'rgba(255, 255, 0, 1.00)'
+                                })
+                            });
+                        }
+
+                        featureOverlay.getSource().addFeature(currentFeature);
+                        featureOverlay.setStyle(highlightStyle);
+                    }
+                    highlight = currentFeature;
+                }
+            }
+
+            if (doHover) {
+                if (popupText) {
+                    content.innerHTML = popupText;
+                    container.style.display = 'block';
+                    overlayPopup.setPosition(coord);
+                } else {
+                    container.style.display = 'none';
+                    closer.blur();
+                }
+            }
+        }
+
+        map.on('pointermove', onPointerMove);
+
+        // ========================================
+        // CONTAINER SETUP
+        // ========================================
+        var topLeftContainerDiv = document.createElement('div');
+        topLeftContainerDiv.id = 'top-left-container';
+        document.getElementById('map').appendChild(topLeftContainerDiv);
+
+        var topRightContainerDiv = document.createElement('div');
+        topRightContainerDiv.id = 'top-right-container';
+        document.getElementById('map').appendChild(topRightContainerDiv);
+
+        var bottomLeftContainerDiv = document.createElement('div');
+        bottomLeftContainerDiv.id = 'bottom-left-container';
+        document.getElementById('map').appendChild(bottomLeftContainerDiv);
+
+        var bottomRightContainerDiv = document.createElement('div');
+        bottomRightContainerDiv.id = 'bottom-right-container';
+        document.getElementById('map').appendChild(bottomRightContainerDiv);
+
+        // ========================================
+        // LAYER SWITCHER
+        // ========================================
+        var layerSwitcher = new ol.control.LayerSwitcher({
+            tipLabel: "Layers",
+            target: topRightContainerDiv
+        });
+        map.addControl(layerSwitcher);
+
+        // ========================================
+        // ATTRIBUTION
+        // ========================================
+        var bottomAttribution = new ol.control.Attribution({
+            collapsible: false,
+            collapsed: false,
+            className: 'bottom-attribution'
+        });
+        map.addControl(bottomAttribution);
+
+        map.once('rendercomplete', function() {
+            var bottomAttributionUl = bottomAttribution.element.querySelector('ul');
+            if (bottomAttributionUl) {
+                var layerAttrs = Array.from(bottomAttributionUl.querySelectorAll('li'))
+                    .map(function(li) { return li.innerHTML.trim(); }).filter(Boolean);
+                var attribHtml = `
+                <a href="https://github.com/qgis2web/qgis2web">qgis2web</a> &middot;
+                <a href="https://openlayers.org/">OpenLayers</a> &middot;
+                <a href="https://qgis.org/">QGIS</a>`;
+                if (layerAttrs.length > 0) { 
+                    attribHtml += ' &nbsp;|&nbsp; ' + layerAttrs.join(', '); 
+                }
+                bottomAttributionUl.innerHTML = '<li>' + attribHtml + '</li>';
+            }
+        });
+
+        // Move attribution to bottom right
+        var attributionControl = document.querySelector('.bottom-attribution');
+        if (attributionControl) {
+            bottomRightContainerDiv.appendChild(attributionControl);
+        }
+
+        // ========================================
+        // DISABLE HOVER ON CONTROLS
+        // ========================================
+        var preDoHover = doHover;
+        var preDoHighlight = doHighlight;
+        var isPopupAllActive = false;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (doHover || doHighlight) {
+                var controlElements = document.getElementsByClassName('ol-control');
+                for (var i = 0; i < controlElements.length; i++) {
+                    controlElements[i].addEventListener('mouseover', function() {
+                        doHover = false;
+                        doHighlight = false;
+                    });
+                    controlElements[i].addEventListener('mouseout', function() {
+                        doHover = preDoHover;
+                        if (isPopupAllActive) { return; }
+                        doHighlight = preDoHighlight;
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+</html>
